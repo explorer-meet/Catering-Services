@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum EventStage {
+  ENQUIRY
+  QUOTATION
+  NEGOTIATION
+  CONFIRMED
+  PREPARATION
+  COMPLETED
+  CANCELLED
+}
+
+enum FoodType {
+  VEG
+  JAIN
+  NON_VEG
+  VEGAN
+  SWAMINARAYAN
+}
+
+enum ServiceTime {
+  BREAKFAST
+  LUNCH
+  HIGH_TEA
+  DINNER
+  SNACKS
+}
+
+enum VenueType {
+  INDOOR
+  OUTDOOR
+}
+
+enum Channel {
+  WEBSITE
+  WHATSAPP
+  INSTAGRAM
+  MOBILE_APP
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  ADVANCE
+  BALANCE
+  FULL
+}
+
+enum GuestTier {
+  FIFTY
+  HUNDRED
+}
+
+// ---------- Core entities ----------
+
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String   @unique
+  email       String?
+  channel     Channel  @default(WEBSITE)
+  createdAt   DateTime @default(now())
+
+  enquiries   Enquiry[]
+  bookings    Booking[]
+
+  @@index([phone])
+}
+
+/// Structured Event Requirement captured by the Enquiry Agent
+model Enquiry {
+  id                 String       @id @default(uuid())
+  customerId         String
+  customer           Customer     @relation(fields: [customerId], references: [id])
+
+  channel            Channel      @default(WEBSITE)
+  eventType          String       // wedding, birthday, corporate, etc.
+  eventDate          DateTime?
+  eventTime          String?
+  location           String?
+  guestCount         Int?
+  paxCount           Int?         // catering pax count (plates to be served), may differ from guestCount
+  foodType           FoodType?
+  cuisinePreferences String?      // comma separated, e.g. "Gujarati,Punjabi"
+  budgetPerPlate     Decimal?     @db.Decimal(10, 2)
+  serviceTimes       String?      // comma separated ServiceTime values
+  venueType          VenueType?
+  specialRequirements String?     @db.Text
+
+  stage              EventStage   @default(ENQUIRY)
+  rawConversation     Json?       // full chat transcript for audit / re-processing
+
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  menuPackages       MenuPackage[]
+  quotations         Quotation[]
+  booking            Booking?
+
+  @@index([customerId])
+}
+
+// ---------- Menu catalog ----------
+
+/// A menu category managed by the Admin (Soup, Starters, Thai Cuisine, etc.)
+model MenuCategory {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  description  String?
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  items        MenuItem[]
+  pricingTiers CategoryPricingTier[]
+}
+
+/// Tentative per-person price range for a category at a given guest-count tier
+model CategoryPricingTier {
+  id                String       @id @default(uuid())
+  categoryId        String
+  category          MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  guestTier         GuestTier
+  minPricePerPerson Decimal      @db.Decimal(10, 2)
+  maxPricePerPerson Decimal      @db.Decimal(10, 2)
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([categoryId, guestTier])
+}
+
+model MenuItem {
+  id           String   @id @default(uuid())
+  name         String
+  categoryId   String
+  category     MenuCategory @relation(fields: [categoryId], references: [id])
+  cuisine      String?  // Gujarati, Punjabi, Thai, Singaporean, Sri Lankan, etc.
+  foodType     FoodType @default(VEG)
+  costPerPlate Decimal  @db.Decimal(10, 2)
+  isJainSafe   Boolean  @default(false)
+  isVegan      Boolean  @default(false)
+  isGlutenFree Boolean  @default(false)
+  containsOnionGarlic Boolean @default(true)
+  allergens    String?  // comma separated
+
+  createdAt    DateTime @default(now())
+
+  packageItems MenuPackageItem[]
+
+  @@index([categoryId])
+}
+
+/// One recommended package option (AI generates 2-3 per enquiry)
+model MenuPackage {
+  id              String   @id @default(uuid())
+  enquiryId       String
+  enquiry         Enquiry  @relation(fields: [enquiryId], references: [id])
+
+  name            String   // e.g. "Silver", "Gold", "Platinum"
+  description     String?  @db.Text
+  pricePerPlate   Decimal  @db.Decimal(10, 2)
+  isSelected      Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           MenuPackageItem[]
+  quotations      Quotation[]
+
+  @@index([enquiryId])
+}
+
+model MenuPackageItem {
+  id             String      @id @default(uuid())
+  menuPackageId  String
+  menuPackage    MenuPackage @relation(fields: [menuPackageId], references: [id], onDelete: Cascade)
+  menuItemId     String
+  menuItem       MenuItem    @relation(fields: [menuItemId], references: [id])
+  quantityNote   String?     // e.g. "unlimited", "2 pieces/plate"
+
+  @@index([menuPackageId])
+}
+
+// ---------- Quotation ----------
+
+model Quotation {
+  id                  String   @id @default(uuid())
+  enquiryId           String
+  enquiry             Enquiry  @relation(fields: [enquiryId], references: [id])
+  menuPackageId       String
+  menuPackage         MenuPackage @relation(fields: [menuPackageId], references: [id])
+
+  quotationNumber     String   @unique
+  guestCount          Int
+  pricePerPlate       Decimal  @db.Decimal(10, 2)
+
+  foodCost            Decimal  @db.Decimal(10, 2)
+  staffCost           Decimal  @db.Decimal(10, 2)
+  equipmentCost       Decimal  @db.Decimal(10, 2)
+  transportationCost  Decimal  @db.Decimal(10, 2)
+  decorationCost      Decimal  @db.Decimal(10, 2) @default(0)
+  otherServicesCost   Decimal  @db.Decimal(10, 2) @default(0)
+  subtotal            Decimal  @db.Decimal(10, 2)
+  taxPercent          Decimal  @db.Decimal(5, 2) @default(5)
+  taxAmount           Decimal  @db.Decimal(10, 2)
+  totalAmount         Decimal  @db.Decimal(10, 2)
+  advanceAmount       Decimal  @db.Decimal(10, 2)
+
+  termsAndConditions  String?  @db.Text
+  cancellationPolicy  String?  @db.Text
+  validUntil          DateTime
+
+  pdfUrl              String?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([enquiryId])
+}
+
+// ---------- Booking ----------
+
+model Booking {
+  id              String     @id @default(uuid())
+  eventId         String     @unique // human readable, e.g. EVT-2026-0001
+  enquiryId       String     @unique
+  enquiry         Enquiry    @relation(fields: [enquiryId], references: [id])
+  customerId      String
+  customer        Customer   @relation(fields: [customerId], references: [id])
+
+  stage           EventStage @default(CONFIRMED)
+  eventDate       DateTime
+  eventTime       String?
+  venue           String
+  guestCount      Int
+  contactPerson   String
+  contactPhone    String
+
+  totalAmount     Decimal    @db.Decimal(10, 2)
+  advancePaid     Decimal    @db.Decimal(10, 2) @default(0)
+  balanceDue      Decimal    @db.Decimal(10, 2)
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  payments        Payment[]
+
+  @@index([customerId])
+}
+
+// ---------- Payments ----------
+
+model Payment {
+  id                String        @id @default(uuid())
+  bookingId         String
+  booking           Booking       @relation(fields: [bookingId], references: [id])
+
+  type              PaymentType
+  amount            Decimal       @db.Decimal(10, 2)
+  status            PaymentStatus @default(PENDING)
+
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  razorpaySignature String?
+
+  receiptUrl        String?
+  reminderSentAt    DateTime?
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([bookingId])
+}
