@@ -1,13 +1,18 @@
+import { useState } from "react";
+import { unsplashPhoto } from "../utils/images";
+
 const SERVICES = [
-  { icon: "💍", title: "Wedding Catering", desc: "Elaborate multi-cuisine menus with live counters for your big day.", seed: "vivah-service-wedding" },
-  { icon: "🎂", title: "Birthday Celebrations", desc: "Fun, colorful spreads tailored for every age group.", seed: "vivah-service-birthday" },
-  { icon: "🎓", title: "Farewell Parties", desc: "Memorable send-offs with comfort food and festive counters.", seed: "vivah-service-farewell" },
-  { icon: "🥂", title: "Bachelor Parties", desc: "Trendy small plates, grills, and beverage counters.", seed: "vivah-service-bachelor" },
-  { icon: "💼", title: "Corporate Events", desc: "Professional service, business lunches, and conference catering.", seed: "vivah-service-corporate" },
-  { icon: "✨", title: "Custom Events", desc: "Any celebration, any scale — we design a menu just for you.", seed: "vivah-service-custom" },
+  { icon: "💍", title: "Wedding Catering", desc: "Elaborate multi-cuisine menus with live counters for your big day.", id: "photo-1519741497674-611481863552" },
+  { icon: "🎂", title: "Birthday Celebrations", desc: "Fun, colorful spreads tailored for every age group.", id: "photo-1530103862676-de8c9debad1d" },
+  { icon: "🎓", title: "Farewell Parties", desc: "Memorable send-offs with comfort food and festive counters.", id: "photo-1523580494863-6f3031224c94" },
+  { icon: "🥂", title: "Bachelor Parties", desc: "Trendy small plates, grills, and beverage counters.", id: "photo-1470337458703-46ad1756a187" },
+  { icon: "💼", title: "Corporate Events", desc: "Professional service, business lunches, and conference catering.", id: "photo-1515187029135-18ee286d815b" },
+  { icon: "✨", title: "Custom Events", desc: "Any celebration, any scale — we design a menu just for you.", id: "photo-1519167758481-83f550bb49b3" },
 ];
 
 export function Services() {
+  const [failed, setFailed] = useState<Record<number, boolean>>({});
+
   return (
     <section id="services" className="section">
       <h2 className="section-title">Our Catering Services</h2>
@@ -15,8 +20,15 @@ export function Services() {
       <div className="grid services-grid">
         {SERVICES.map((s, i) => (
           <div className="card service-card" key={s.title}>
-            <div className="service-card-image">
-              <img src={`https://picsum.photos/seed/${s.seed}/400/280`} alt={s.title} loading="lazy" />
+            <div className={`service-card-image ${failed[i] ? "service-card-image-fallback" : ""}`}>
+              {!failed[i] && (
+                <img
+                  src={unsplashPhoto(s.id, 400, 280)}
+                  alt={s.title}
+                  loading="lazy"
+                  onError={() => setFailed((prev) => ({ ...prev, [i]: true }))}
+                />
+              )}
               <span className="service-icon">{s.icon}</span>
               <span className="service-index">{String(i + 1).padStart(2, "0")}</span>
             </div>

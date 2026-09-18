@@ -1,16 +1,43 @@
+import { useEffect, useState } from "react";
+import { unsplashPhoto } from "../utils/images";
+
 interface HeroProps {
   onPlanEvent: () => void;
 }
 
+const HERO_SLIDES = [
+  { id: "photo-1555244162-803834f70033", alt: "Elegantly plated gourmet dish" },
+  { id: "photo-1547573854-74d2a71d0826", alt: "Rich curry served at a catered event" },
+  { id: "photo-1596797038530-2c107229654b", alt: "Beautifully arranged festive food spread" },
+];
+
 export function Hero({ onPlanEvent }: HeroProps) {
+  const [failed, setFailed] = useState<Record<number, boolean>>({});
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveSlide((i) => (i + 1) % HERO_SLIDES.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const allFailed = HERO_SLIDES.every((_, i) => failed[i]);
+
   return (
     <section className="hero">
-      <img
-        className="hero-bg"
-        src="https://picsum.photos/seed/vivah-hero-banquet/1600/900"
-        alt=""
-        aria-hidden="true"
-      />
+      {!allFailed &&
+        HERO_SLIDES.map((slide, i) =>
+          failed[i] ? null : (
+            <img
+              key={slide.id}
+              className={`hero-bg ${i === activeSlide ? "hero-bg-active" : ""}`}
+              src={unsplashPhoto(slide.id, 1600, 900)}
+              alt={slide.alt}
+              onError={() => setFailed((prev) => ({ ...prev, [i]: true }))}
+            />
+          ),
+        )}
       <div className="hero-content">
         <p className="hero-badge">⭐⭐⭐⭐⭐ Rated 4.9 by 500+ happy clients</p>
         <p className="hero-kicker">Weddings · Celebrations · Corporate Events</p>
@@ -33,24 +60,20 @@ export function Hero({ onPlanEvent }: HeroProps) {
         </div>
       </div>
 
-      <div className="hero-stats">
-        <div>
-          <strong>500+</strong>
-          <span>Events Catered</span>
-        </div>
-        <div>
-          <strong>15+</strong>
-          <span>Years of Excellence</span>
-        </div>
-        <div>
-          <strong>50+</strong>
-          <span>Menu Combinations</span>
-        </div>
-        <div>
-          <strong>100%</strong>
-          <span>On-Time Delivery</span>
-        </div>
+      <div className="hero-slide-dots">
+        {HERO_SLIDES.map((slide, i) => (
+          <button
+            key={slide.id}
+            className={`hero-slide-dot ${i === activeSlide ? "active" : ""}`}
+            aria-label={`Show slide ${i + 1}`}
+            onClick={() => setActiveSlide(i)}
+          />
+        ))}
       </div>
+
+      <a className="hero-scroll-cue" href="#services" aria-label="Scroll to explore">
+        ↓
+      </a>
     </section>
   );
 }
