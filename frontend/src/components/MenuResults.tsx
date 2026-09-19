@@ -1,42 +1,48 @@
 import { useEffect, useState } from "react";
 import {
-  confirmBooking,
+  api,
   createQuotation,
   customizeMenuPackage,
   estimateTentativePrice,
   selectMenuPackage,
   TentativeEstimate,
 } from "../api/client";
+import { BrandLogo } from "./BrandLogo";
 
 interface MenuResultsProps {
   enquiryId: string;
+  whatsappLink: string | null;
   guestCount: number;
   packages: any[];
   onBack: () => void;
 }
 
-export function MenuResults({ enquiryId, guestCount, packages: initialPackages, onBack }: MenuResultsProps) {
+export function MenuResults({ enquiryId, whatsappLink, guestCount, packages: initialPackages, onBack }: MenuResultsProps) {
   const [packages, setPackages] = useState(initialPackages);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [customizeText, setCustomizeText] = useState("");
   const [quotation, setQuotation] = useState<any>(null);
-  const [booking, setBooking] = useState<any>(null);
-  const [contactPerson, setContactPerson] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [estimates, setEstimates] = useState<Record<string, TentativeEstimate>>({});
 
   useEffect(() => {
-    packages.forEach((pkg) => {
-      const categories = Array.from(
-        new Set<string>(pkg.items.map((i: any) => i.menuItem.category.name)),
+    let cancelled = false;
+
+    async function loadEstimates() {
+      const results = await Promise.all(
+        packages.map(async (pkg) => {
+          const categories = Array.from(
+            new Set<string>(pkg.items.map((item: any) => item.menuItem.category.name)),
+          );
+          return [pkg.id, await estimateTentativePrice({ guestCount, categories })] as const;
+        }),
       );
-      estimateTentativePrice({ guestCount, categories }).then((result) => {
-        setEstimates((prev) => ({ ...prev, [pkg.id]: result }));
-      });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [packages.length]);
+      if (!cancelled) setEstimates(Object.fromEntries(results));
+    }
+
+    loadEstimates().catch((error) => console.error("Unable to load package estimates", error));
+    return () => { cancelled = true; };
+  }, [packages, guestCount]);
 
   async function handleSelectPackage(packageId: string) {
     setLoading(true);
@@ -71,15 +77,44 @@ export function MenuResults({ enquiryId, guestCount, packages: initialPackages, 
     }
   }
 
-  async function handleConfirmBooking() {
-    if (!quotation || !contactPerson || !contactPhone) return;
-    setLoading(true);
-    try {
-      const result = await confirmBooking({ quotationId: quotation.id, contactPerson, contactPhone });
-      setBooking(result);
-    } finally {
-      setLoading(false);
-    }
+  if (quotation) {
+    const apiOrigin = api.defaults.baseURL?.startsWith("http")
+      ? api.defaults.baseURL
+      : window.location.origin;
+    const downloadUrl = quotation.pdfUrl?.startsWith("http")
+      ? quotation.pdfUrl
+      : new URL(quotation.pdfUrl, apiOrigin).toString();
+
+    return (
+      <div className="results-page">
+        <div className="results-topbar">
+          <button className="icon-button" onClick={onBack} aria-label="Go to main landing page" title="Home">
+            ⌂
+          </button>
+          <BrandLogo />
+        </div>
+        <div className="completion-panel">
+          <span className="completion-mark" aria-hidden="true">✓</span>
+          <p className="completion-kicker">Your menu is ready</p>
+          <h1>Thank you for planning with us.</h1>
+          <p>
+            Your curated menu reference has been prepared. Download it to review the dishes
+            and share it with your family or event team.
+          </p>
+          {quotation.pdfUrl && (
+            <a className="btn btn-primary btn-large" href={downloadUrl} target="_blank" rel="noreferrer">
+              Download Menu
+            </a>
+          )}
+          {whatsappLink && (
+            <a className="btn btn-outline" href={whatsappLink} target="_blank" rel="noreferrer">
+              Continue on WhatsApp
+            </a>
+          )}
+          <button className="completion-home" onClick={onBack}>Return to main page</button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -90,6 +125,11 @@ export function MenuResults({ enquiryId, guestCount, packages: initialPackages, 
         </button>
         <h1>Your Recommended Menu Packages</h1>
         <p>Choose a package below, customize it if you like, then generate your quotation.</p>
+        {whatsappLink && (
+          <a className="btn btn-primary" href={whatsappLink} target="_blank" rel="noreferrer">
+            Continue on WhatsApp
+          </a>
+        )}
       </div>
 
       <div className="grid packages-grid">
@@ -142,44 +182,6 @@ export function MenuResults({ enquiryId, guestCount, packages: initialPackages, 
         </div>
       )}
 
-      {quotation && (
-        <div className="card action-panel">
-          <h3>Quotation {quotation.quotationNumber}</h3>
-          <p>Total amount: ₹{quotation.totalAmount}</p>
-          <p>Advance payable: ₹{quotation.advanceAmount}</p>
-          {quotation.pdfUrl && (
-            <a className="btn btn-outline" href={quotation.pdfUrl} target="_blank" rel="noreferrer">
-              Download PDF
-            </a>
-          )}
-
-          {!booking && (
-            <div className="inline-form">
-              <input
-                placeholder="Contact person"
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
-              />
-              <input
-                placeholder="Contact phone"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-              />
-              <button className="btn btn-primary" onClick={handleConfirmBooking} disabled={loading}>
-                Confirm Booking
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {booking && (
-        <div className="card action-panel booking-confirmed">
-          <h3>🎉 Booking Confirmed: {booking.eventId}</h3>
-          <p>Total: ₹{booking.totalAmount}</p>
-          <p>Balance due: ₹{booking.balanceDue}</p>
-        </div>
-      )}
     </div>
   );
 }

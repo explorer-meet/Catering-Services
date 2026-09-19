@@ -38,6 +38,16 @@ export async function createWizardEnquiry(params: {
   return data;
 }
 
+export async function createContactEnquiry(params: {
+  customerName: string;
+  customerPhone: string;
+  eventType: string;
+  note: string;
+}) {
+  const { data } = await api.post("/enquiries/contact", params);
+  return data;
+}
+
 export async function generateMenuPackages(enquiryId: string) {
   const { data } = await api.post(`/menu/enquiries/${enquiryId}/generate`);
   return data;

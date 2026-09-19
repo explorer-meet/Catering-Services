@@ -1,0 +1,1 @@
+ALTER TABLE `Enquiry` ADD COLUMN `menuCategories` VARCHAR(191) NULL;

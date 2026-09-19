@@ -11,13 +11,14 @@ import { Reveal } from "./Reveal";
 
 interface LandingPageProps {
   onPlanEvent: () => void;
+  onNavigate: (view: "landing" | "gallery" | "services" | "contact") => void;
 }
 
-export function LandingPage({ onPlanEvent }: LandingPageProps) {
+export function LandingPage({ onPlanEvent, onNavigate }: LandingPageProps) {
   return (
-    <div className="landing">
-      <Navbar onPlanEvent={onPlanEvent} />
-      <Hero onPlanEvent={onPlanEvent} />
+    <div id="top" className="landing">
+      <Navbar onPlanEvent={onPlanEvent} onNavigate={onNavigate} />
+      <Hero onPlanEvent={onPlanEvent} onViewServices={() => onNavigate("services")} />
       <Marquee />
       <Reveal>
         <Services />
@@ -26,13 +27,13 @@ export function LandingPage({ onPlanEvent }: LandingPageProps) {
         <WhyChooseUs />
       </Reveal>
       <Reveal>
-        <Gallery />
+        <Gallery onViewGallery={() => onNavigate("gallery")} />
       </Reveal>
       <CtaBanner onPlanEvent={onPlanEvent} />
       <Reveal>
         <Testimonials />
       </Reveal>
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }

@@ -1,8 +1,13 @@
 import { Request, Response } from "express";
-import { createEnquiryFromWizard, handleEnquiryMessage, getEnquiry, listEnquiries } from "./enquiry.service";
+import { createContactEnquiry, createEnquiryFromWizard, handleEnquiryMessage, getEnquiry, listEnquiries } from "./enquiry.service";
 
 export async function postWizardEnquiry(req: Request, res: Response) {
   const enquiry = await createEnquiryFromWizard(req.body);
+  res.status(201).json(enquiry);
+}
+
+export async function postContactEnquiry(req: Request, res: Response) {
+  const enquiry = await createContactEnquiry(req.body);
   res.status(201).json(enquiry);
 }
 

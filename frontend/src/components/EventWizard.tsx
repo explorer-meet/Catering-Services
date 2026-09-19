@@ -52,6 +52,7 @@ export function EventWizard({ onCancel, onSubmit, submitting }: EventWizardProps
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div key={i} className={`progress-dot ${i + 1 <= step ? "active" : ""}`} />
           ))}
+          <span className="wizard-progress-label">Step {step} of {TOTAL_STEPS}</span>
         </div>
 
         <div className="wizard-body">
@@ -189,11 +190,14 @@ function StepDateVenue({
   onDate: (v: string) => void;
   onVenue: (v: "INDOOR" | "OUTDOOR") => void;
 }) {
+  const today = new Date().toISOString().split("T")[0];
+
   return (
     <div className="wizard-step">
       <h3>When and where is your event?</h3>
-      <label className="field-label">Date of Event</label>
-      <input type="date" value={eventDate} onChange={(e) => onDate(e.target.value)} />
+      <label className="field-label" htmlFor="event-date">Provide your event date</label>
+      <input id="event-date" type="date" min={today} value={eventDate} onChange={(e) => onDate(e.target.value)} aria-describedby="event-date-hint" />
+      <p id="event-date-hint" className="field-hint">Choose the date your catering service is needed.</p>
       <label className="field-label">Venue Type</label>
       <div className="toggle-group">
         <button

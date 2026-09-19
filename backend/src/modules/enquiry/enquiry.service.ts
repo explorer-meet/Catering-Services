@@ -91,6 +91,32 @@ export interface WizardEnquiryInput {
   specialRequirements?: string;
 }
 
+export interface ContactEnquiryInput {
+  customerName: string;
+  customerPhone: string;
+  eventType: string;
+  note: string;
+}
+
+export async function createContactEnquiry(input: ContactEnquiryInput) {
+  const customer = await prisma.customer.upsert({
+    where: { phone: input.customerPhone },
+    update: { name: input.customerName },
+    create: { phone: input.customerPhone, name: input.customerName, channel: "WEBSITE" },
+  });
+
+  return prisma.enquiry.create({
+    data: {
+      customerId: customer.id,
+      channel: "WEBSITE",
+      eventType: input.eventType,
+      specialRequirements: input.note,
+      foodType: "VEG",
+    },
+    include: { customer: true },
+  });
+}
+
 /// Creates an Enquiry directly from the structured planning wizard (no free-form chat/AI parsing needed)
 export async function createEnquiryFromWizard(input: WizardEnquiryInput) {
   const customer = await prisma.customer.upsert({
@@ -99,7 +125,7 @@ export async function createEnquiryFromWizard(input: WizardEnquiryInput) {
     create: { phone: input.customerPhone, name: input.customerName, channel: "WEBSITE" },
   });
 
-  return prisma.enquiry.create({
+  const enquiry = await prisma.enquiry.create({
     data: {
       customerId: customer.id,
       channel: "WEBSITE",
@@ -115,7 +141,14 @@ export async function createEnquiryFromWizard(input: WizardEnquiryInput) {
       foodType: "VEG",
       stage: "QUOTATION",
     },
+    include: { customer: true },
   });
+
+  const welcomeMessage = `Hi Vivah Caterers, I am ${input.customerName}. My enquiry ${enquiry.id} is ready. Please help me finalize my event menu.`;
+  return {
+    ...enquiry,
+    whatsappLink: `https://wa.me/918758770402?text=${encodeURIComponent(welcomeMessage)}`,
+  };
 }
 
 export async function getEnquiry(id: string) {

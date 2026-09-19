@@ -5,7 +5,7 @@ const SERVICES = [
   { icon: "💍", title: "Wedding Catering", desc: "Elaborate multi-cuisine menus with live counters for your big day.", id: "photo-1519741497674-611481863552" },
   { icon: "🎂", title: "Birthday Celebrations", desc: "Fun, colorful spreads tailored for every age group.", id: "photo-1530103862676-de8c9debad1d" },
   { icon: "🎓", title: "Farewell Parties", desc: "Memorable send-offs with comfort food and festive counters.", id: "photo-1523580494863-6f3031224c94" },
-  { icon: "🥂", title: "Bachelor Parties", desc: "Trendy small plates, grills, and beverage counters.", id: "photo-1470337458703-46ad1756a187" },
+  { icon: "🥂", title: "Bachelor Parties", desc: "Trendy vegetarian small plates and beverage counters.", id: "photo-1540420773420-3366772f4999" },
   { icon: "💼", title: "Corporate Events", desc: "Professional service, business lunches, and conference catering.", id: "photo-1515187029135-18ee286d815b" },
   { icon: "✨", title: "Custom Events", desc: "Any celebration, any scale — we design a menu just for you.", id: "photo-1519167758481-83f550bb49b3" },
 ];

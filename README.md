@@ -96,6 +96,10 @@ used to give customers a tentative budget range before the full AI menu is gener
   payment flow; auto WhatsApp confirmation + daily reminder cron for outstanding balances.
 - `POST /api/whatsapp/webhook` — Twilio inbound WhatsApp webhook, routes to the Enquiry Agent.
 
+The planning wizard creates the customer and enquiry before generating menu packages, then
+provides a WhatsApp deep link with a prefilled welcome message. This does not send messages
+server-side; the customer confirms and sends the message from WhatsApp.
+
 ### Admin (category / item / pricing management)
 
 - `GET/POST /api/admin/categories` — list/create menu categories.

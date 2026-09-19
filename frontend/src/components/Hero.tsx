@@ -3,15 +3,16 @@ import { unsplashPhoto } from "../utils/images";
 
 interface HeroProps {
   onPlanEvent: () => void;
+  onViewServices: () => void;
 }
 
 const HERO_SLIDES = [
-  { id: "photo-1555244162-803834f70033", alt: "Elegantly plated gourmet dish" },
-  { id: "photo-1547573854-74d2a71d0826", alt: "Rich curry served at a catered event" },
-  { id: "photo-1596797038530-2c107229654b", alt: "Beautifully arranged festive food spread" },
+  { id: "photo-1547592180-85f173990554", alt: "Colorful vegetarian curry spread" },
+  { id: "photo-1515003197210-e0cd71810b5f", alt: "Fresh vegetarian dishes at a catered event" },
+  { id: "photo-1543353071-873f17a7a088", alt: "Beautifully arranged vegetarian food spread" },
 ];
 
-export function Hero({ onPlanEvent }: HeroProps) {
+export function Hero({ onPlanEvent, onViewServices }: HeroProps) {
   const [failed, setFailed] = useState<Record<number, boolean>>({});
   const [activeSlide, setActiveSlide] = useState(0);
 
@@ -39,7 +40,6 @@ export function Hero({ onPlanEvent }: HeroProps) {
           ),
         )}
       <div className="hero-content">
-        <p className="hero-badge">⭐⭐⭐⭐⭐ Rated 4.9 by 500+ happy clients</p>
         <p className="hero-kicker">Weddings · Celebrations · Corporate Events</p>
         <h1>
           Crafting Unforgettable
@@ -54,9 +54,9 @@ export function Hero({ onPlanEvent }: HeroProps) {
           <button className="btn btn-primary btn-large" onClick={onPlanEvent}>
             ✨ Plan Your Event Now
           </button>
-          <a className="btn btn-outline btn-large" href="#services">
+          <button className="btn btn-outline btn-large" onClick={onViewServices}>
             Explore Services
-          </a>
+          </button>
         </div>
       </div>
 
@@ -71,9 +71,9 @@ export function Hero({ onPlanEvent }: HeroProps) {
         ))}
       </div>
 
-      <a className="hero-scroll-cue" href="#services" aria-label="Scroll to explore">
+      <button className="hero-scroll-cue" onClick={onViewServices} aria-label="Explore services">
         ↓
-      </a>
+      </button>
     </section>
   );
 }

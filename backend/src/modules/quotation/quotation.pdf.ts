@@ -16,62 +16,76 @@ export async function renderQuotationPdf(quotation: FullQuotation): Promise<stri
   if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   const filePath = path.join(OUTPUT_DIR, `${quotation.quotationNumber}.pdf`);
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = new PDFDocument({ margin: 44, size: "A4" });
   const stream = fs.createWriteStream(filePath);
   doc.pipe(stream);
 
-  doc.fontSize(20).text("Catering Quotation", { align: "center" });
-  doc.moveDown();
-  doc.fontSize(10).text(`Quotation #: ${quotation.quotationNumber}`);
-  doc.text(`Valid until: ${quotation.validUntil.toDateString()}`);
-  doc.moveDown();
+  const maroon = "#651f38";
+  const gold = "#c59b45";
+  const ink = "#2b1c22";
+  const muted = "#756a6e";
+  const light = "#fbf6ed";
 
-  doc.fontSize(14).text("Customer Details");
-  doc.fontSize(10)
-    .text(`Name: ${quotation.enquiry.customer.name}`)
-    .text(`Phone: ${quotation.enquiry.customer.phone}`);
-  doc.moveDown();
+  doc.info.Title = `Vivah Caterers - ${quotation.quotationNumber}`;
+  doc.rect(0, 0, doc.page.width, 116).fill(maroon);
+  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(24).text("VIVAH CATERERS", 44, 34);
+  doc.font("Helvetica").fontSize(10).fillColor("#f4dfad").text("Curated menus. Seamless celebrations.", 46, 68);
+  doc.font("Helvetica-Bold").fontSize(18).fillColor("#ffffff").text("QUOTATION", 370, 35, { align: "right" });
+  doc.font("Helvetica").fontSize(9).fillColor("#f4dfad").text(quotation.quotationNumber, 370, 67, { align: "right" });
+  doc.fillColor(ink);
 
-  doc.fontSize(14).text("Event Details");
-  doc.fontSize(10)
-    .text(`Event type: ${quotation.enquiry.eventType}`)
-    .text(`Date: ${quotation.enquiry.eventDate?.toDateString() ?? "TBD"}`)
-    .text(`Location: ${quotation.enquiry.location ?? "TBD"}`)
-    .text(`Guests: ${quotation.guestCount}`);
-  doc.moveDown();
+  doc.y = 140;
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(gold).text("PREPARED FOR");
+  doc.font("Helvetica-Bold").fontSize(18).fillColor(maroon).text(quotation.enquiry.customer.name);
+  doc.font("Helvetica").fontSize(10).fillColor(muted).text(`${quotation.enquiry.customer.phone}  |  Valid until ${quotation.validUntil.toDateString()}`);
+  doc.moveDown(1.4);
 
-  doc.fontSize(14).text(`Selected Menu: ${quotation.menuPackage.name}`);
-  doc.fontSize(10);
+  const panelTop = doc.y;
+  doc.roundedRect(44, panelTop, 247, 96, 8).fill(light);
+  doc.roundedRect(303, panelTop, 247, 96, 8).fill(light);
+  doc.fillColor(maroon).font("Helvetica-Bold").fontSize(11).text("EVENT DETAILS", 60, panelTop + 16);
+  doc.fillColor(ink).font("Helvetica").fontSize(10)
+    .text(`Type: ${quotation.enquiry.eventType}`, 60, panelTop + 39)
+    .text(`Date: ${quotation.enquiry.eventDate?.toDateString() ?? "TBD"}`, 60, panelTop + 56)
+    .text(`Guests: ${quotation.guestCount}`, 60, panelTop + 73);
+  doc.fillColor(maroon).font("Helvetica-Bold").fontSize(11).text("SERVICE SNAPSHOT", 319, panelTop + 16);
+  doc.fillColor(ink).font("Helvetica").fontSize(10)
+    .text(`Venue: ${quotation.enquiry.venueType ?? "To be confirmed"}`, 319, panelTop + 39)
+    .text(`Menu: ${quotation.menuPackage.name}`, 319, panelTop + 56)
+    .text(`Price per plate: ${money(quotation.pricePerPlate)}`, 319, panelTop + 73);
+  doc.y = panelTop + 120;
+
+  sectionHeading(doc, "SELECTED MENU", maroon, gold);
   const grouped = groupByCategory(quotation.menuPackage.items);
   for (const [category, items] of Object.entries(grouped)) {
-    doc.font("Helvetica-Bold").text(category);
-    doc.font("Helvetica").text(items.map((i) => i.menuItem.name).join(", "));
+    doc.fillColor(maroon).font("Helvetica-Bold").fontSize(10).text(category.toUpperCase());
+    doc.fillColor(muted).font("Helvetica").fontSize(9).text(items.map((i) => i.menuItem.name).join("  •  "), { indent: 10 });
+    doc.moveDown(0.25);
   }
   doc.moveDown();
 
-  doc.fontSize(14).text("Cost Breakdown");
-  doc.fontSize(10);
-  addLine(doc, "Price per plate", quotation.pricePerPlate);
-  addLine(doc, "Food cost", quotation.foodCost);
-  addLine(doc, "Staff cost", quotation.staffCost);
-  addLine(doc, "Equipment cost", quotation.equipmentCost);
-  addLine(doc, "Transportation cost", quotation.transportationCost);
-  addLine(doc, "Decoration cost", quotation.decorationCost);
-  addLine(doc, "Other services", quotation.otherServicesCost);
-  addLine(doc, "Subtotal", quotation.subtotal);
-  addLine(doc, `Tax (${quotation.taxPercent}%)`, quotation.taxAmount);
-  doc.font("Helvetica-Bold");
-  addLine(doc, "Total Amount", quotation.totalAmount);
-  doc.font("Helvetica");
-  addLine(doc, "Advance payable", quotation.advanceAmount);
+  sectionHeading(doc, "INVESTMENT SUMMARY", maroon, gold);
+  const rows = [
+    ["Food cost", quotation.foodCost], ["Staff cost", quotation.staffCost],
+    ["Equipment cost", quotation.equipmentCost], ["Transportation cost", quotation.transportationCost],
+    ["Decoration and other services", Number(quotation.decorationCost) + Number(quotation.otherServicesCost)],
+    ["Subtotal", quotation.subtotal], [`Tax (${quotation.taxPercent}%)`, quotation.taxAmount],
+  ] as const;
+  for (const [label, amount] of rows) addTableRow(doc, label, money(amount), false, ink, muted);
+  addTableRow(doc, "TOTAL AMOUNT", money(quotation.totalAmount), true, maroon, maroon);
+  addTableRow(doc, "Advance payable", money(quotation.advanceAmount), false, ink, muted);
   doc.moveDown();
 
-  doc.fontSize(14).text("Terms & Conditions");
-  doc.fontSize(9).text(quotation.termsAndConditions ?? "Standard terms apply.");
+  sectionHeading(doc, "TERMS & CONDITIONS", maroon, gold);
+  doc.fillColor(muted).font("Helvetica").fontSize(8.5).text(quotation.termsAndConditions ?? "Standard terms apply.", { lineGap: 3 });
   doc.moveDown();
 
-  doc.fontSize(14).text("Cancellation Policy");
-  doc.fontSize(9).text(quotation.cancellationPolicy ?? "Standard cancellation policy applies.");
+  sectionHeading(doc, "CANCELLATION POLICY", maroon, gold);
+  doc.fillColor(muted).font("Helvetica").fontSize(8.5).text(quotation.cancellationPolicy ?? "Standard cancellation policy applies.", { lineGap: 3 });
+
+  doc.moveTo(44, 770).lineTo(551, 770).strokeColor(gold).lineWidth(1).stroke();
+  doc.fillColor(maroon).font("Helvetica-Bold").fontSize(9).text("VIVAH CATERERS", 44, 782);
+  doc.fillColor(muted).font("Helvetica").fontSize(8).text("Thank you for trusting us with your celebration.", 170, 782);
 
   doc.end();
 
@@ -83,8 +97,29 @@ export async function renderQuotationPdf(quotation: FullQuotation): Promise<stri
   return `/quotations/${quotation.quotationNumber}.pdf`;
 }
 
-function addLine(doc: PDFKit.PDFDocument, label: string, amount: unknown) {
-  doc.text(`${label}: Rs. ${Number(amount).toFixed(2)}`);
+function sectionHeading(doc: PDFKit.PDFDocument, title: string, maroon: string, gold: string) {
+  doc.fillColor(maroon).font("Helvetica-Bold").fontSize(12).text(title);
+  doc.moveTo(44, doc.y + 4).lineTo(551, doc.y + 4).strokeColor(gold).lineWidth(1).stroke();
+  doc.moveDown(0.7);
+}
+
+function addTableRow(
+  doc: PDFKit.PDFDocument,
+  label: string,
+  amount: string,
+  emphasized: boolean,
+  labelColor: string,
+  amountColor: string,
+) {
+  const y = doc.y;
+  if (emphasized) doc.roundedRect(44, y - 4, 507, 25, 4).fill("#fbf6ed");
+  doc.fillColor(labelColor).font(emphasized ? "Helvetica-Bold" : "Helvetica").fontSize(emphasized ? 10 : 9.5).text(label, 54, y);
+  doc.fillColor(amountColor).font("Helvetica-Bold").fontSize(emphasized ? 10 : 9.5).text(amount, 390, y, { width: 150, align: "right" });
+  doc.y = y + (emphasized ? 29 : 21);
+}
+
+function money(amount: unknown) {
+  return `Rs. ${Number(amount).toFixed(2)}`;
 }
 
 function groupByCategory(items: ItemWithCategory[]) {

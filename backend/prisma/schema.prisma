@@ -98,6 +98,7 @@ model Enquiry {
   foodType           FoodType?
   cuisinePreferences String?      // comma separated, e.g. "Gujarati,Punjabi"
   budgetPerPlate     Decimal?     @db.Decimal(10, 2)
+  menuCategories     String?      // comma-separated requested menu categories
   serviceTimes       String?      // comma separated ServiceTime values
   venueType          VenueType?
   specialRequirements String?     @db.Text

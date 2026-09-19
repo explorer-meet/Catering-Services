@@ -2,16 +2,16 @@ import { useState } from "react";
 import { unsplashPhoto } from "../utils/images";
 
 const GALLERY_ITEMS = [
-  { label: "Wedding Mandap Dinner", id: "photo-1519671482749-fd09be7ccebf" },
-  { label: "Live Chaat Counter", id: "photo-1550547660-d9450f859349" },
-  { label: "Royal Thali Setup", id: "photo-1631515243349-e0cb75fb8d3a" },
-  { label: "Dessert Station", id: "photo-1546069901-ba9599a7e63c" },
-  { label: "Corporate Buffet", id: "photo-1512621776951-a57141f2eefd" },
-  { label: "Rooftop Bachelor Party", id: "photo-1466637574441-749b8f19452f" },
+  { label: "Wedding Mandap Dinner", id: "photo-1543353071-873f17a7a088" },
+  { label: "Live Chaat Counter", id: "photo-1540420773420-3366772f4999" },
+  { label: "Royal Thali Setup", id: "photo-1546069901-ba9599a7e63c" },
+  { label: "Dessert Station", id: "photo-1495147466023-ac5c588e2e94" },
+  { label: "Corporate Buffet", id: "photo-1498837167922-ddd27525d352" },
+  { label: "Rooftop Celebration", id: "photo-1505253716362-afaea1d3d1af" },
 ];
 
-export function Gallery() {
-  const items = [...GALLERY_ITEMS, ...GALLERY_ITEMS];
+export function Gallery({ onViewGallery }: { onViewGallery: () => void }) {
+  const items = GALLERY_ITEMS;
   const [failed, setFailed] = useState<Record<number, boolean>>({});
 
   return (
@@ -39,7 +39,14 @@ export function Gallery() {
         </div>
       </div>
       <div className="gallery-cta">
-        <a className="btn btn-outline" href="#contact">
+        <a
+          className="btn btn-outline"
+          href="#gallery"
+          onClick={(event) => {
+            event.preventDefault();
+            onViewGallery();
+          }}
+        >
           View Full Gallery →
         </a>
       </div>
