@@ -1,6 +1,8 @@
 import axios from "axios";
 
-export const api = axios.create({ baseURL: "/api" });
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "/api";
+
+export const api = axios.create({ baseURL: apiBaseUrl });
 
 export interface EnquiryMessageResponse {
   enquiry: any;

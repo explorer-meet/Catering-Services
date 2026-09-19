@@ -135,6 +135,18 @@ npm run dev               # http://localhost:5173
 
 The frontend dev server proxies `/api` and `/quotations` to the backend on port 4000.
 
+### Deploying frontend and backend separately
+
+When the frontend is deployed to Vercel and the backend to Render, set this Vercel
+environment variable for the `frontend` project before building:
+
+```text
+VITE_API_BASE_URL=https://<your-render-service>.onrender.com/api
+```
+
+The frontend uses `/api` when this variable is not set, which is suitable for the local
+Vite proxy but does not reach a separately deployed Render service.
+
 ### WhatsApp
 
 Point your Twilio WhatsApp sandbox/number webhook to:
