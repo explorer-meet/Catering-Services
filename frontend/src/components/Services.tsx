@@ -10,7 +10,7 @@ const SERVICES = [
   { icon: "✨", title: "Custom Events", desc: "Any celebration, any scale — we design a menu just for you.", id: "photo-1519167758481-83f550bb49b3" },
 ];
 
-export function Services() {
+export function Services({ onViewMore }: { onViewMore: () => void }) {
   const [failed, setFailed] = useState<Record<number, boolean>>({});
 
   return (
@@ -36,6 +36,11 @@ export function Services() {
             <p>{s.desc}</p>
           </div>
         ))}
+      </div>
+      <div className="services-cta">
+        <button className="btn btn-outline btn-large" onClick={onViewMore}>
+          View More Services <span aria-hidden="true">→</span>
+        </button>
       </div>
     </section>
   );

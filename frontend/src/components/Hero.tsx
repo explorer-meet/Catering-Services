@@ -35,6 +35,8 @@ export function Hero({ onPlanEvent, onViewServices }: HeroProps) {
               className={`hero-bg ${i === activeSlide ? "hero-bg-active" : ""}`}
               src={unsplashPhoto(slide.id, 1600, 900)}
               alt={slide.alt}
+              loading={i === 0 ? "eager" : "lazy"}
+              decoding="async"
               onError={() => setFailed((prev) => ({ ...prev, [i]: true }))}
             />
           ),

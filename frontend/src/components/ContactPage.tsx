@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { createContactEnquiry } from "../api/client";
 import { EVENT_TYPES } from "../wizardData";
 import { PageIntro, StandaloneLayout } from "./GalleryPage";
+import { ContactIcon } from "./ContactIcon";
 
 interface ContactPageProps {
   onNavigate: (view: "landing" | "gallery" | "services" | "contact") => void;
@@ -49,9 +50,9 @@ export function ContactPage({ onNavigate, onPlanEvent }: ContactPageProps) {
             <p className="page-eyebrow">A thoughtful start</p>
             <h2>Good food begins with a good conversation.</h2>
             <p>Tell us what you are imagining. We will listen, suggest, and help you shape a celebration that feels like yours.</p>
-            <div className="contact-detail"><span className="contact-detail-icon" aria-hidden="true">☎</span><div><strong>Call us</strong><a href="tel:+919876543210">+91 98765 43210</a></div></div>
-            <div className="contact-detail"><span className="contact-detail-icon" aria-hidden="true">✉</span><div><strong>Email us</strong><a href="mailto:hello@vivahcaterers.com">hello@vivahcaterers.com</a></div></div>
-            <div className="contact-detail"><span className="contact-detail-icon" aria-hidden="true">⌖</span><div><strong>Based in</strong><span>Ahmedabad, Gujarat</span></div></div>
+            <div className="contact-detail"><span className="contact-detail-icon"><ContactIcon name="phone" /></span><div><strong>Call us</strong><a href="tel:+919974700749">+91 99747 00749</a></div></div>
+            <div className="contact-detail"><span className="contact-detail-icon"><ContactIcon name="mail" /></span><div><strong>Email us</strong><a href="mailto:vivahevents2012@gmail.com">vivahevents2012@gmail.com</a></div></div>
+            <div className="contact-detail"><span className="contact-detail-icon"><ContactIcon name="location" /></span><div><strong>Visit us</strong><span>GF-17, Nakshatra Mall, Nr. Canara Bank, IOC Road, Chandkheda, Ahmedabad-382424, Gujarat</span></div></div>
           </aside>
           <form className="contact-form" onSubmit={submit}>
             <label>Name<input required value={form.customerName} onChange={(event) => update("customerName", event.target.value)} placeholder="Your full name" /></label>
@@ -63,6 +64,10 @@ export function ContactPage({ onNavigate, onPlanEvent }: ContactPageProps) {
           </form>
         </div>
       )}
+      <div className="contact-map-wrap">
+        <div className="contact-map-heading"><p className="page-eyebrow">Find us</p><h2>Come say hello</h2></div>
+        <iframe className="contact-map" title="Vivah Events location" loading="lazy" src="https://www.google.com/maps?q=GF-17%2C%20Nakshatra%20Mall%2C%20IOC%20Road%2C%20Chandkheda%2C%20Ahmedabad%20382424%2C%20Gujarat&output=embed" />
+      </div>
       </div>
     </StandaloneLayout>
   );

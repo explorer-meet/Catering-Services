@@ -7,22 +7,6 @@ const apiBaseUrl = configuredApiBaseUrl || (import.meta.env.PROD
 
 export const api = axios.create({ baseURL: apiBaseUrl });
 
-export interface EnquiryMessageResponse {
-  enquiry: any;
-  reply: string;
-  isComplete: boolean;
-}
-
-export async function sendEnquiryMessage(params: {
-  customerPhone: string;
-  customerName: string;
-  message: string;
-  enquiryId?: string;
-}): Promise<EnquiryMessageResponse> {
-  const { data } = await api.post("/enquiries/message", { ...params, channel: "WEBSITE" });
-  return data;
-}
-
 export async function createWizardEnquiry(params: {
   customerPhone: string;
   customerName: string;
@@ -84,11 +68,3 @@ export async function createQuotation(params: { enquiryId: string; menuPackageId
   return data;
 }
 
-export async function confirmBooking(params: {
-  quotationId: string;
-  contactPerson: string;
-  contactPhone: string;
-}) {
-  const { data } = await api.post("/bookings/confirm", params);
-  return data;
-}

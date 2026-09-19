@@ -1,18 +1,23 @@
 import { BrandLogo } from "./BrandLogo";
+import { ContactIcon } from "./ContactIcon";
 
 export function Footer({ onNavigate }: { onNavigate: (view: "landing" | "gallery" | "services" | "contact") => void }) {
   return (
     <footer id="contact" className="footer">
       <div className="footer-inner">
-        <div>
+        <div className="footer-brand-column">
           <BrandLogo light />
           <p>Crafting unforgettable culinary experiences since 2011.</p>
           <div className="footer-socials">
-            <a href="https://instagram.com" aria-label="Instagram" target="_blank" rel="noreferrer">
+            <a href="https://www.facebook.com/vivahevents2012" aria-label="Facebook" target="_blank" rel="noreferrer">f</a>
+            <a href="https://www.instagram.com/vivahevents2012/?hl=en" aria-label="Instagram" target="_blank" rel="noreferrer">
               <svg className="instagram-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <defs><linearGradient id="instagram-gradient" x1="2" y1="22" x2="22" y2="2"><stop stopColor="#ffd600" /><stop offset=".45" stopColor="#ff0169" /><stop offset="1" stopColor="#7638fa" /></linearGradient></defs>
                 <rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" className="icon-fill" />
               </svg>
+            </a>
+            <a href="https://www.youtube.com/@vaishalishah7972" aria-label="YouTube" target="_blank" rel="noreferrer">
+              <svg className="youtube-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z" /></svg>
             </a>
             <a href="https://wa.me/918758770402" aria-label="WhatsApp" target="_blank" rel="noreferrer">
               <svg className="whatsapp-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -23,9 +28,9 @@ export function Footer({ onNavigate }: { onNavigate: (view: "landing" | "gallery
         </div>
         <div>
           <h4>Contact</h4>
-          <p className="footer-contact-detail"><span aria-hidden="true">☎</span><a href="tel:+919876543210">+91 98765 43210</a></p>
-          <p className="footer-contact-detail"><span aria-hidden="true">✉</span><a href="mailto:hello@vivahcaterers.com">hello@vivahcaterers.com</a></p>
-          <p className="footer-contact-detail"><span aria-hidden="true">⌖</span><span>Ahmedabad, Gujarat, India</span></p>
+          <p className="footer-contact-detail"><span className="footer-contact-icon"><ContactIcon name="phone" /></span><a href="tel:+919974700749">+91 99747 00749</a></p>
+          <p className="footer-contact-detail"><span className="footer-contact-icon"><ContactIcon name="mail" /></span><a href="mailto:vivahevents2012@gmail.com">vivahevents2012@gmail.com</a></p>
+          <p className="footer-contact-detail"><span className="footer-contact-icon"><ContactIcon name="location" /></span><span>GF-17, Nakshatra Mall, Nr. Canara Bank, IOC Road, Chandkheda, Ahmedabad-382424, Gujarat</span></p>
         </div>
         <div>
           <h4>Quick Links</h4>
@@ -41,7 +46,7 @@ export function Footer({ onNavigate }: { onNavigate: (view: "landing" | "gallery
             <input type="email" placeholder="Your email address" />
             <a
               className="btn btn-gold"
-              href="mailto:hello@vivahcaterers.com?subject=Subscribe%20to%20Vivah%20Caterers%20updates"
+              href="mailto:vivahevents2012@gmail.com?subject=Subscribe%20to%20Vivah%20Events%20updates"
             >
               Subscribe
             </a>

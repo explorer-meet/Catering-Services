@@ -21,7 +21,7 @@ export function LandingPage({ onPlanEvent, onNavigate }: LandingPageProps) {
       <Hero onPlanEvent={onPlanEvent} onViewServices={() => onNavigate("services")} />
       <Marquee />
       <Reveal>
-        <Services />
+        <Services onViewMore={() => onNavigate("services")} />
       </Reveal>
       <Reveal>
         <WhyChooseUs />

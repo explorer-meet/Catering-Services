@@ -1,17 +1,28 @@
 import { ReactNode, useState } from "react";
-import { unsplashPhoto } from "../utils/images";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
 
 const GALLERY_ITEMS = [
-  { label: "Wedding Mandap Dinner", id: "photo-1543353071-873f17a7a088" },
-  { label: "Live Chaat Counter", id: "photo-1540420773420-3366772f4999" },
-  { label: "Royal Thali Setup", id: "photo-1546069901-ba9599a7e63c" },
-  { label: "Dessert Station", id: "photo-1495147466023-ac5c588e2e94" },
-  { label: "Corporate Buffet", id: "photo-1498837167922-ddd27525d352" },
-  { label: "Rooftop Celebration", id: "photo-1505253716362-afaea1d3d1af" },
-  { label: "Fresh Salad Bar", id: "photo-1512621776951-a57141f2eefd" },
-  { label: "Festive Family Table", id: "photo-1547592180-85f173990554" },
+  { label: "Vivah Events celebration", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/WhatsApp-Image-2026-03-30-at-11.52.16-AM.jpeg" },
+  { label: "Catering arrangement", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/WhatsApp-Image-2026-03-30-at-11.40.11-AM.jpeg" },
+  { label: "Event dining setup", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/WhatsApp-Image-2026-02-05-at-10.21.34-AM.jpeg" },
+  { label: "Wedding celebration", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/WhatsApp-Image-2026-01-29-at-5.03.05-PM.jpeg" },
+  { label: "Reception details", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/WhatsApp-Image-2026-01-29-at-1.45.53-PM.jpeg" },
+  { label: "Festive event decor", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/27-04-2026.jpg.jpeg" },
+  { label: "Celebration stage", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/24-04-2026-6.jpg.jpeg" },
+  { label: "Special event setup", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/24-04-2026-4.jpg.jpeg" },
+  { label: "Guest experience", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/24-04-2026-1.jpg.jpeg" },
+  { label: "Live celebration", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/18-04-2026-4.png" },
+  { label: "Event styling", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/18-04-2026-3.png" },
+  { label: "Catering service", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/18-04-2026-1.png" },
+  { label: "Family gathering", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/11-04-2026-4.jpg.jpeg" },
+  { label: "Wedding moments", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/11-04-2026-3.jpg.jpeg" },
+  { label: "Elegant venue", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/11-04-2026-2.jpg.jpeg" },
+  { label: "Celebration table", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/08-05-2026-8.jpg.jpeg" },
+  { label: "Decorated event space", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/08-05-2026-7.jpg.jpeg" },
+  { label: "Vivah catering moment", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/08-05-2026.jpg.jpeg" },
+  { label: "Festive hospitality", url: "https://www.vivahevent.in/wp-content/uploads/2026/05/06-04-2026-6.jpg.jpeg" },
+  { label: "Memorable occasion", url: "https://www.vivahevent.in/wp-content/uploads/2025/04/WhatsApp-Image-2025-04-28-at-3.47.47-PM.jpeg" },
 ];
 
 interface GalleryPageProps {
@@ -28,7 +39,7 @@ export function GalleryPage({ onNavigate, onPlanEvent }: GalleryPageProps) {
       <section className="standalone-gallery" aria-label="Catering gallery">
         {GALLERY_ITEMS.map((item, index) => (
           <figure className={`standalone-gallery-item ${failed[index] ? "image-fallback" : ""}`} key={item.label}>
-            {!failed[index] && <img src={unsplashPhoto(item.id, 640, 480)} alt={item.label} loading="lazy" decoding="async" onError={() => setFailed((current) => ({ ...current, [index]: true }))} />}
+            {!failed[index] && <img src={item.url} alt={item.label} loading="lazy" decoding="async" onError={() => setFailed((current) => ({ ...current, [index]: true }))} />}
             <figcaption>{item.label}</figcaption>
           </figure>
         ))}
