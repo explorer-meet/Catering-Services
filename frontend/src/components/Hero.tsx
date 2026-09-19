@@ -42,15 +42,15 @@ export function Hero({ onPlanEvent, onViewServices }: HeroProps) {
           ),
         )}
       <div className="hero-content">
-        <p className="hero-kicker">Weddings · Celebrations · Corporate Events</p>
+        <p className="hero-kicker">Curated catering for meaningful occasions</p>
         <h1>
-          Crafting Unforgettable
+          Every celebration
           <br />
-          <span className="hero-highlight">Culinary Experiences</span>
+          <span className="hero-highlight">deserves a signature table.</span>
         </h1>
         <p className="hero-subtext">
-          From intimate gatherings to grand weddings, Vivah Caterers brings authentic flavors,
-          flawless service, and AI-powered menu planning to every plate.
+          From intimate gatherings to grand weddings, Vivah Events brings thoughtful menus,
+          expressive presentation, and calm hospitality to every plate.
         </p>
         <div className="hero-actions">
           <button className="btn btn-primary btn-large" onClick={onPlanEvent}>
@@ -59,6 +59,11 @@ export function Hero({ onPlanEvent, onViewServices }: HeroProps) {
           <button className="btn btn-outline btn-large" onClick={onViewServices}>
             Explore Services
           </button>
+        </div>
+        <div className="hero-proof-row" aria-label="Vivah Events highlights">
+          <span><strong>01</strong> Menus shaped around you</span>
+          <span><strong>02</strong> Live counters & warm service</span>
+          <span><strong>03</strong> One calm planning journey</span>
         </div>
       </div>
 

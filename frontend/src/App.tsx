@@ -7,6 +7,7 @@ import { WizardData } from "./wizardData";
 import { GalleryPage } from "./components/GalleryPage";
 import { ServicesPage } from "./components/ServicesPage";
 import { ContactPage } from "./components/ContactPage";
+import { PlannerPage } from "./components/PlannerPage";
 
 type View = "landing" | "gallery" | "services" | "contact" | "wizard" | "results";
 
@@ -65,20 +66,27 @@ export function App() {
     );
   }
 
+  if (view === "wizard") {
+    return (
+      <PlannerPage
+        onNavigate={navigate}
+        onCancel={() => navigate("landing")}
+        onSubmit={handleWizardSubmit}
+        submitting={submitting}
+      />
+    );
+  }
+
   if (view === "gallery") return <GalleryPage onNavigate={navigate} onPlanEvent={() => navigate("wizard")} />;
   if (view === "services") return <ServicesPage onNavigate={navigate} onPlanEvent={() => navigate("wizard")} />;
   if (view === "contact") return <ContactPage onNavigate={navigate} onPlanEvent={() => navigate("wizard")} />;
 
   return (
     <>
-      <LandingPage onPlanEvent={() => navigate("wizard")} onNavigate={navigate} />
-      {view === "wizard" && (
-        <EventWizard
-          onCancel={() => navigate("landing")}
-          onSubmit={handleWizardSubmit}
-          submitting={submitting}
-        />
-      )}
+      <LandingPage
+        onPlanEvent={() => navigate("wizard")}
+        onNavigate={navigate}
+      />
       {error && (
         <div className="toast-error" onClick={() => setError(null)}>
           {error}

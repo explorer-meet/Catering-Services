@@ -8,6 +8,7 @@ interface EventWizardProps {
 }
 
 const TOTAL_STEPS = 6;
+const STEP_LABELS = ["Event details", "Guest count", "Date & venue", "Budget", "Meal service", "Your details"];
 
 export function EventWizard({ onCancel, onSubmit, submitting }: EventWizardProps) {
   const [step, setStep] = useState(1);
@@ -42,17 +43,23 @@ export function EventWizard({ onCancel, onSubmit, submitting }: EventWizardProps
     <div className="wizard-overlay">
       <div className="wizard-card">
         <div className="wizard-header">
-          <h2>Plan Your Event</h2>
-          <button className="wizard-close" onClick={onCancel} aria-label="Close">
+          <div>
+            <p className="wizard-kicker">Interactive menu planner</p>
+            <h2>Design your event experience</h2>
+            <p className="wizard-intro">Tell us a little about your celebration and we will shape a menu around it.</p>
+          </div>
+          <button className="wizard-close" onClick={onCancel} aria-label="Close planner">
             ✕
           </button>
         </div>
 
         <div className="wizard-progress">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div key={i} className={`progress-dot ${i + 1 <= step ? "active" : ""}`} />
+          {STEP_LABELS.map((label, i) => (
+            <div key={label} className={`wizard-progress-step ${i + 1 <= step ? "active" : ""}`}>
+              <span className="progress-dot">{i + 1}</span>
+              <span>{label}</span>
+            </div>
           ))}
-          <span className="wizard-progress-label">Step {step} of {TOTAL_STEPS}</span>
         </div>
 
         <div className="wizard-body">
@@ -94,7 +101,7 @@ export function EventWizard({ onCancel, onSubmit, submitting }: EventWizardProps
             {step === 1 ? "Cancel" : "Back"}
           </button>
           <button className="btn btn-primary" onClick={next} disabled={!canProceed || submitting}>
-            {submitting ? "Please wait..." : step === TOTAL_STEPS ? "Get My Menu" : "Next"}
+            {submitting ? "Preparing your menu..." : step === TOTAL_STEPS ? "Get My Menu" : "Continue"}
           </button>
         </div>
       </div>

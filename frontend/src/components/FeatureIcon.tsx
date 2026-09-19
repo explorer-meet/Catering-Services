@@ -1,0 +1,10 @@
+export type FeatureIconName = "planning" | "dietary" | "chefs" | "quotes" | "service" | "payments";
+
+export function FeatureIcon({ name }: { name: FeatureIconName }) {
+  if (name === "planning") return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6" /><circle cx="9" cy="10" r="1.2" fill="currentColor" /><circle cx="15" cy="10" r="1.2" fill="currentColor" /><path d="M8 15h8M9 18h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>;
+  if (name === "dietary") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20C7 18 5 14.5 6.3 10.8 7.2 8.4 9.4 7 12 7c2.6 0 4.8 1.4 5.7 3.8C19 14.5 17 18 12 20Z" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M12 17V4m0 5c-2 0-3.4-1-4.2-2.5M12 11c2 0 3.4-1 4.2-2.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>;
+  if (name === "chefs") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11h10v9H7zM5 11a3 3 0 0 1 1-5.8A4 4 0 0 1 13 3a4 4 0 0 1 7 2.2A3 3 0 0 1 19 11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M9 15h6M9 18h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>;
+  if (name === "quotes") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a2 2 0 0 1 2 2v15H4V5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>;
+  if (name === "service") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16h18v3H3zM6 16V9h8v7M14 12h4l3 4h-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><circle cx="7" cy="20" r="1.5" fill="currentColor" /><circle cx="18" cy="20" r="1.5" fill="currentColor" /></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M3 10h18M7 14h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>;
+}

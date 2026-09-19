@@ -8,6 +8,7 @@ import { CtaBanner } from "./CtaBanner";
 import { Testimonials } from "./Testimonials";
 import { Footer } from "./Footer";
 import { Reveal } from "./Reveal";
+import { CuisinePalette } from "./CuisinePalette";
 
 interface LandingPageProps {
   onPlanEvent: () => void;
@@ -22,6 +23,9 @@ export function LandingPage({ onPlanEvent, onNavigate }: LandingPageProps) {
       <Marquee />
       <Reveal>
         <Services onViewMore={() => onNavigate("services")} />
+      </Reveal>
+      <Reveal>
+        <CuisinePalette onPlanEvent={onPlanEvent} />
       </Reveal>
       <Reveal>
         <WhyChooseUs />

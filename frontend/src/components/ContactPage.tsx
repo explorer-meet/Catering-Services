@@ -50,11 +50,35 @@ export function ContactPage({ onNavigate, onPlanEvent }: ContactPageProps) {
             <p className="page-eyebrow">A thoughtful start</p>
             <h2>Good food begins with a good conversation.</h2>
             <p>Tell us what you are imagining. We will listen, suggest, and help you shape a celebration that feels like yours.</p>
-            <div className="contact-detail"><span className="contact-detail-icon"><ContactIcon name="phone" /></span><div><strong>Call us</strong><a href="tel:+919974700749">+91 99747 00749</a></div></div>
-            <div className="contact-detail"><span className="contact-detail-icon"><ContactIcon name="mail" /></span><div><strong>Email us</strong><a href="mailto:vivahevents2012@gmail.com">vivahevents2012@gmail.com</a></div></div>
-            <div className="contact-detail"><span className="contact-detail-icon"><ContactIcon name="location" /></span><div><strong>Visit us</strong><span>GF-17, Nakshatra Mall, Nr. Canara Bank, IOC Road, Chandkheda, Ahmedabad-382424, Gujarat</span></div></div>
+            <div className="contact-detail-cards">
+              <a className="contact-detail-card" href="tel:+919974700749">
+                <span className="contact-detail-icon"><ContactIcon name="phone" /></span>
+                <span className="contact-detail-copy"><strong>Call us</strong><b>+91 99747 00749</b></span>
+              </a>
+              <a className="contact-detail-card" href="https://wa.me/919974700749" target="_blank" rel="noreferrer">
+                <span className="contact-detail-icon"><ContactIcon name="whatsapp" /></span>
+                <span className="contact-detail-copy"><strong>WhatsApp</strong><b>+91 99747 00749</b></span>
+              </a>
+              <a className="contact-detail-card" href="mailto:vivahevents2012@gmail.com">
+                <span className="contact-detail-icon"><ContactIcon name="mail" /></span>
+                <span className="contact-detail-copy"><strong>Email</strong><b>vivahevents2012@gmail.com</b></span>
+              </a>
+              <a className="contact-detail-card" href="https://www.google.com/maps/search/?api=1&query=GF-17%20Nakshatra%20Mall%20Chandkheda%20Ahmedabad" target="_blank" rel="noreferrer">
+                <span className="contact-detail-icon"><ContactIcon name="location" /></span>
+                <span className="contact-detail-copy"><strong>Address</strong><b>GF-17, Nakshatra Mall, IOC Road, Chandkheda, Ahmedabad</b></span>
+              </a>
+              <div className="contact-detail-card">
+                <span className="contact-detail-icon"><ContactIcon name="clock" /></span>
+                <span className="contact-detail-copy"><strong>Open</strong><b>Mon - Sun · 9:00 AM - 9:00 PM</b></span>
+              </div>
+            </div>
           </aside>
           <form className="contact-form" onSubmit={submit}>
+            <div className="contact-form-heading">
+              <p className="page-eyebrow">Your enquiry</p>
+              <h2>Let&apos;s plan something memorable.</h2>
+              <p>Share the basics and our team will get back to you with a thoughtful starting point.</p>
+            </div>
             <label>Name<input required value={form.customerName} onChange={(event) => update("customerName", event.target.value)} placeholder="Your full name" /></label>
             <label>Event type<select required value={form.eventType} onChange={(event) => update("eventType", event.target.value)}><option value="">Choose an event</option>{EVENT_TYPES.map((eventType) => <option key={eventType.value} value={eventType.value}>{eventType.label}</option>)}</select></label>
             <label>Contact number<input required pattern="[+0-9 ]{10,16}" value={form.customerPhone} onChange={(event) => update("customerPhone", event.target.value)} placeholder="+91 98765 43210" /></label>

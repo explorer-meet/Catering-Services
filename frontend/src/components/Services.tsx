@@ -14,9 +14,10 @@ export function Services({ onViewMore }: { onViewMore: () => void }) {
   const [failed, setFailed] = useState<Record<number, boolean>>({});
 
   return (
-    <section id="services" className="section">
-      <h2 className="section-title">Our Catering Services</h2>
-      <p className="section-subtitle">Every event deserves a menu as unique as the occasion.</p>
+    <section id="services" className="section services-section">
+      <p className="section-eyebrow">What we do</p>
+      <h2 className="section-title">Catering crafted for your kind of celebration.</h2>
+      <p className="section-subtitle">From the first welcome drink to the last sweet finish, every detail has a reason.</p>
       <div className="grid services-grid">
         {SERVICES.map((s, i) => (
           <div className="card service-card" key={s.title}>
