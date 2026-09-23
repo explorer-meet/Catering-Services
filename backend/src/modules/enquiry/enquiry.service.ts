@@ -21,17 +21,17 @@ interface WhatsAppEnquiryData {
 }
 
 const WHATSAPP_WELCOME_MESSAGE =
-  "Welcome to Vivah Caterers! Thanks for reaching out. We will help you plan the right catering menu for your event.";
+  "✨ Welcome to *Vivah Caterers!*\nThanks for reaching out. We will help you plan the perfect catering menu for your event.";
 const WHATSAPP_FINAL_MESSAGE =
-  "Thank you for sharing your event details. Our team will reach out to you shortly for further details.";
+  "✅ *Thank you for sharing your event details!*\n\nOur team will reach out to you shortly for further details.";
 
 const EVENT_TYPE_OPTIONS = [
-  "Birthday Celebration",
-  "Farewell Party",
-  "Corporate Event",
-  "Wedding Ceremony",
-  "Bachelor Party",
-  "Others",
+  "🎂 Birthday Celebration",
+  "🎓 Farewell Party",
+  "💼 Corporate Event",
+  "💍 Wedding Ceremony",
+  "🎉 Bachelor Party",
+  "✨ Others",
 ];
 
 export async function handleEnquiryMessage(input: StartOrContinueInput) {
@@ -41,8 +41,13 @@ export async function handleEnquiryMessage(input: StartOrContinueInput) {
     create: { phone: input.customerPhone, name: input.customerName, channel: input.channel },
   });
 
+  const shouldStartNewWhatsAppEnquiry =
+    input.channel === "WHATSAPP" && !input.enquiryId && isGreetingMessage(input.message);
+
   const enquiry = input.enquiryId
     ? await prisma.enquiry.findUnique({ where: { id: input.enquiryId } })
+    : shouldStartNewWhatsAppEnquiry
+      ? null
     : await prisma.enquiry.findFirst({
         where: { customerId: customer.id, stage: "ENQUIRY" },
         orderBy: { createdAt: "desc" },
@@ -108,33 +113,33 @@ async function handleWhatsAppEnquiry({
     const eventType = normalizeEventTypeAnswer(input.message);
     updateData.eventType = eventType;
     createEventType = eventType;
-    reply = "How many guests are you expecting?";
+    reply = "👥 *How many guests are you expecting?*\n\nPlease reply with a number, for example: 50, 100, or 200.";
   } else if (isGuestCountQuestion(lastAssistantMessage)) {
     const guestCount = parsePositiveNumber(input.message);
 
     if (!guestCount) {
-      reply = "Please share the expected guest count as a number, for example 50, 100, or 200.";
+      reply = "👥 Please share the expected guest count as a number, for example: 50, 100, or 200.";
     } else {
       updateData.guestCount = guestCount;
-      reply = "When is the event?";
+      reply = "📅 *When is the event?*\n\nPlease share the date, for example: 21 Feb 2026.";
     }
   } else if (isEventDateQuestion(lastAssistantMessage)) {
     const eventDate = parseEventDate(input.message);
 
     if (!eventDate) {
-      reply = "Please share the event date, for example 25 Dec 2026.";
+      reply = "📅 Please share the event date, for example: 25 Dec 2026.";
     } else {
       updateData.eventDate = eventDate;
-      reply = "What is the location?";
+      reply = "📍 *What is the location?*\n\nFor example: Green Wood Party Plot.";
     }
   } else if (isLocationQuestion(lastAssistantMessage)) {
     updateData.location = input.message.trim();
-    reply = "What is the budget per person?";
+    reply = "💰 *What is the budget per person?*\n\nPlease reply with an amount, for example: 300, 500, or 800.";
   } else if (isBudgetQuestion(lastAssistantMessage)) {
     const budgetPerPlate = parsePositiveNumber(input.message);
 
     if (!budgetPerPlate) {
-      reply = "Please share the budget per person as a number, for example 300, 500, or 800.";
+      reply = "💰 Please share the budget per person as a number, for example: 300, 500, or 800.";
     } else {
       updateData.budgetPerPlate = budgetPerPlate;
       reply = WHATSAPP_FINAL_MESSAGE;
@@ -171,19 +176,19 @@ function getNextWhatsAppQuestion(enquiry: Awaited<ReturnType<typeof prisma.enqui
   }
 
   if (!enquiry.guestCount) {
-    return "How many guests are you expecting?";
+    return "👥 *How many guests are you expecting?*\n\nPlease reply with a number, for example: 50, 100, or 200.";
   }
 
   if (!enquiry.eventDate) {
-    return "When is the event?";
+    return "📅 *When is the event?*\n\nPlease share the date, for example: 21 Feb 2026.";
   }
 
   if (!enquiry.location) {
-    return "What is the location?";
+    return "📍 *What is the location?*\n\nFor example: Green Wood Party Plot.";
   }
 
   if (!enquiry.budgetPerPlate) {
-    return "What is the budget per person?";
+    return "💰 *What is the budget per person?*\n\nPlease reply with an amount, for example: 300, 500, or 800.";
   }
 
   return WHATSAPP_FINAL_MESSAGE;
@@ -202,7 +207,7 @@ function formatEventTypeQuestion(reply: string) {
   }
 
   const options = EVENT_TYPE_OPTIONS.map((option, index) => `${index + 1}. ${option}`).join("\n");
-  return `What type of event are you planning?\n\n${options}`;
+  return `🎊 *What type of event are you planning?*\n\n${options}\n\nReply with the option number or event name.`;
 }
 
 function normalizeEventTypeOption(message: string, previousTurns: ChatTurn[]) {
@@ -216,7 +221,11 @@ function normalizeEventTypeOption(message: string, previousTurns: ChatTurn[]) {
 }
 
 function normalizeEventTypeAnswer(message: string) {
-  return EVENT_TYPE_OPTIONS[Number(message.trim()) - 1] ?? message.trim();
+  return stripEmojiPrefix(EVENT_TYPE_OPTIONS[Number(message.trim()) - 1] ?? message.trim());
+}
+
+function stripEmojiPrefix(message: string) {
+  return message.replace(/^[^A-Za-z0-9]+\s*/, "").trim();
 }
 
 function isEventTypeQuestion(message: string) {
@@ -263,8 +272,22 @@ function parsePositiveNumber(message: string) {
 }
 
 function parseEventDate(message: string) {
-  const date = new Date(message.trim());
-  return Number.isNaN(date.getTime()) ? null : date;
+  const normalized = message.trim().replace(/(\d+)(st|nd|rd|th)/gi, "$1");
+  let date = new Date(normalized);
+
+  if (Number.isNaN(date.getTime()) && !/\b\d{4}\b/.test(normalized)) {
+    date = new Date(`${normalized} ${new Date().getFullYear()}`);
+  }
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  if (!/\b\d{4}\b/.test(normalized) && date < new Date()) {
+    date.setFullYear(date.getFullYear() + 1);
+  }
+
+  return date;
 }
 
 function mapExtractionToEnquiryData(extraction: EnquiryExtraction) {
