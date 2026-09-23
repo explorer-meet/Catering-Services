@@ -53,6 +53,19 @@ const STANDARD_MENU_PDFS = [
   { label: "Platinum Menu.pdf", fileName: "platinum-menu.pdf" },
 ];
 
+const OWNER_CATEGORY_OPTIONS = [
+  "Soup",
+  "Starter",
+  "Chinese Counter",
+  "Himalayan Counter",
+  "Punjabi Counter",
+  "Gujarati",
+  "Kathiyavadi",
+  "Sweets",
+  "Mocktails",
+  "Fresh Juice",
+];
+
 export async function handleEnquiryMessage(input: StartOrContinueInput) {
   const customer = await prisma.customer.upsert({
     where: { phone: input.customerPhone },
@@ -61,7 +74,9 @@ export async function handleEnquiryMessage(input: StartOrContinueInput) {
   });
 
   const shouldStartNewWhatsAppEnquiry =
-    input.channel === "WHATSAPP" && !input.enquiryId && isGreetingMessage(input.message);
+    input.channel === "WHATSAPP" &&
+    !input.enquiryId &&
+    (isGreetingMessage(input.message) || isOwnerMenuStart(input.message));
 
   const enquiry = input.enquiryId
     ? await prisma.enquiry.findUnique({ where: { id: input.enquiryId } })
@@ -130,7 +145,46 @@ async function handleWhatsAppEnquiry({
   let isComplete = false;
   let mediaUrls: string[] | undefined;
 
-  if (isEventTypeQuestion(lastAssistantMessage)) {
+  if (isOwnerMenuStart(input.message)) {
+    createEventType = "Owner Menu Draft";
+    reply = `👨‍🍳 *Owner Menu Generator*\n\n${formatEventTypeQuestion("What type of event are you planning?")}`;
+  } else if (isOwnerEventQuestion(lastAssistantMessage)) {
+    const eventType = normalizeEventTypeAnswer(input.message);
+    updateData.eventType = eventType;
+    createEventType = eventType;
+    reply = "📅 *Owner Menu Generator*\n\nWhen is the event?\n\nPlease share the event date, for example: 21 Feb 2026.";
+  } else if (isOwnerDateQuestion(lastAssistantMessage)) {
+    const eventDate = parseEventDate(input.message);
+
+    if (!eventDate) {
+      reply = "📅 Please share the event date, for example: 25 Dec 2026.";
+    } else {
+      updateData.eventDate = eventDate;
+      reply = "👥 *Owner Menu Generator*\n\nHow many persons are expected?\n\nPlease reply with a number, for example: 100, 300, or 500.";
+    }
+  } else if (isOwnerPersonsQuestion(lastAssistantMessage)) {
+    const guestCount = parsePositiveNumber(input.message);
+
+    if (!guestCount) {
+      reply = "👥 Please share the person count as a number, for example: 100, 300, or 500.";
+    } else {
+      updateData.guestCount = guestCount;
+      reply = "📍 *Owner Menu Generator*\n\nWhat is the event location?\n\nExample: Green Wood Party Plot";
+    }
+  } else if (isOwnerLocationQuestion(lastAssistantMessage)) {
+    updateData.location = input.message.trim();
+    reply = formatOwnerCategoryOptions();
+  } else if (isOwnerCategoryQuestion(lastAssistantMessage)) {
+    const selectedCategories = normalizeOwnerCategorySelection(input.message);
+
+    if (selectedCategories.length === 0) {
+      reply = `Please select at least one category by replying with numbers or names.\n\n${formatOwnerCategoryOptions()}`;
+    } else {
+      updateData.specialRequirements = `Owner selected menu categories: ${selectedCategories.join(", ")}`;
+      reply = await generateOwnerMenuReply({ enquiry, updateData, selectedCategories });
+      isComplete = true;
+    }
+  } else if (isEventTypeQuestion(lastAssistantMessage)) {
     const eventType = normalizeEventTypeAnswer(input.message);
     updateData.eventType = eventType;
     createEventType = eventType;
@@ -324,8 +378,156 @@ function getStandardMenuMediaUrl(fileName: string) {
   return `${baseUrl}/menus/${fileName}`;
 }
 
+function formatOwnerCategoryOptions() {
+  const categories = OWNER_CATEGORY_OPTIONS.map((category, index) => `${index + 1}. ${category}`).join("\n");
+  return `🍽️ *Select menu categories*\n\n${categories}\n\nReply with category numbers or names.\nExample: 1, 2, 5, 8`;
+}
+
+function normalizeOwnerCategorySelection(message: string) {
+  const normalized = message.trim().toLowerCase();
+
+  if (normalized === "all") {
+    return OWNER_CATEGORY_OPTIONS;
+  }
+
+  const selected = new Set<string>();
+  const tokens = normalized
+    .split(/[,\n]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  for (const token of tokens) {
+    const selectedByNumber = OWNER_CATEGORY_OPTIONS[Number(token) - 1];
+
+    if (selectedByNumber) {
+      selected.add(selectedByNumber);
+      continue;
+    }
+
+    const selectedByName = OWNER_CATEGORY_OPTIONS.find((category) => {
+      const categoryName = category.toLowerCase();
+      return categoryName.includes(token) || token.includes(categoryName.split(" ")[0]);
+    });
+
+    if (selectedByName) {
+      selected.add(selectedByName);
+    }
+  }
+
+  return [...selected];
+}
+
+async function generateOwnerMenuReply({
+  enquiry,
+  updateData,
+  selectedCategories,
+}: {
+  enquiry: Awaited<ReturnType<typeof prisma.enquiry.findUnique>>;
+  updateData: WhatsAppEnquiryData;
+  selectedCategories: string[];
+}) {
+  const eventType = updateData.eventType ?? enquiry?.eventType ?? "Event";
+  const eventDate = updateData.eventDate ?? enquiry?.eventDate ?? null;
+  const guestCount = updateData.guestCount ?? enquiry?.guestCount ?? null;
+  const location = updateData.location ?? enquiry?.location ?? "Not shared";
+  const menuSections = await Promise.all(
+    selectedCategories.map(async (category) => ({ category, items: await findOwnerMenuItems(category) })),
+  );
+  const selectedItems = menuSections.flatMap((section) => section.items);
+  const estimatedPrice = selectedItems.reduce((sum, item) => sum + Number(item.costPerPlate), 0);
+  const sections = menuSections
+    .map((section) => {
+      const items = section.items.length > 0
+        ? section.items.map((item) => `• ${item.name}`).join("\n")
+        : "• No matching items found in catalog";
+
+      return `*${section.category}*\n${items}`;
+    })
+    .join("\n\n");
+  const formattedDate = eventDate ? eventDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Not shared";
+
+  return `👨‍🍳 *Generated Owner Menu*\n\n*Event:* ${eventType}\n*Date:* ${formattedDate}\n*Persons:* ${guestCount ?? "Not shared"}\n*Location:* ${location}\n\n${sections}\n\n*Estimated food cost:* ₹${estimatedPrice}/person\n\nYou can review and customize this menu during the meeting.`;
+}
+
+async function findOwnerMenuItems(category: string) {
+  const items = await prisma.menuItem.findMany({ include: { category: true }, orderBy: { costPerPlate: "asc" } });
+  const matched = items.filter((item) => ownerCategoryMatchesItem(category, item));
+  const fallback = items.filter((item) => item.category.name.toLowerCase().includes(category.toLowerCase().split(" ")[0]));
+  const selected = matched.length > 0 ? matched : fallback;
+
+  return selected.slice(0, getOwnerCategoryItemCount(category));
+}
+
+function ownerCategoryMatchesItem(
+  category: string,
+  item: Prisma.MenuItemGetPayload<{ include: { category: true } }>,
+) {
+  const target = category.toLowerCase();
+  const itemText = `${item.name} ${item.cuisine ?? ""} ${item.category.name}`.toLowerCase();
+
+  if (target === "soup") return item.category.name.toLowerCase().includes("soup");
+  if (target === "starter") return item.category.name.toLowerCase().includes("starter");
+  if (target === "mocktails") return item.category.name.toLowerCase().includes("mocktail");
+  if (target === "fresh juice") return item.category.name.toLowerCase().includes("juice");
+  if (target === "sweets") return item.category.name.toLowerCase().includes("dessert") || itemText.includes("sweet");
+  if (target === "chinese counter") {
+    return ["chinese", "manchurian", "schezwan", "noodle", "fried rice", "spring roll", "chilli paneer"].some((word) => itemText.includes(word));
+  }
+  if (target === "himalayan counter") {
+    return ["momo", "thukpa", "wonton", "dumpling"].some((word) => itemText.includes(word));
+  }
+  if (target === "punjabi counter") {
+    return ["punjabi", "paneer", "dal makhani", "naan", "kulcha", "chole", "tandoori"].some((word) => itemText.includes(word));
+  }
+  if (target === "gujarati") {
+    return ["gujarati", "undhiyu", "kadhi", "mohanthal", "shrikhand", "basundi"].some((word) => itemText.includes(word));
+  }
+  if (target === "kathiyavadi") {
+    return ["kathiyavadi", "bajra", "lasooni", "sev tameta", "ringan", "rotla", "gujarati"].some((word) => itemText.includes(word));
+  }
+
+  return itemText.includes(target);
+}
+
+function getOwnerCategoryItemCount(category: string) {
+  if (["Soup", "Mocktails", "Fresh Juice", "Sweets"].includes(category)) {
+    return 3;
+  }
+
+  return 4;
+}
+
 function stripEmojiPrefix(message: string) {
   return message.replace(/^[^A-Za-z0-9]+\s*/, "").trim();
+}
+
+function isOwnerMenuStart(message: string) {
+  const normalized = message.trim().toLowerCase();
+  return ["owner menu", "generate menu", "create menu", "admin menu"].some((phrase) => normalized.includes(phrase));
+}
+
+function isOwnerEventQuestion(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("owner menu generator") && isEventTypeQuestion(message);
+}
+
+function isOwnerDateQuestion(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("owner menu generator") && normalized.includes("when is the event");
+}
+
+function isOwnerPersonsQuestion(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("owner menu generator") && normalized.includes("how many persons are expected");
+}
+
+function isOwnerLocationQuestion(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("owner menu generator") && normalized.includes("what is the event location");
+}
+
+function isOwnerCategoryQuestion(message: string) {
+  return message.toLowerCase().includes("select menu categories");
 }
 
 function isEventTypeQuestion(message: string) {
