@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
+import twilio from "twilio";
 import { handleEnquiryMessage } from "../enquiry/enquiry.service";
-import { sendWhatsAppMessage } from "../../common/whatsappClient";
 
 /// Twilio WhatsApp webhook: https://www.twilio.com/docs/whatsapp/api
 export async function postWhatsAppWebhook(req: Request, res: Response) {
@@ -17,12 +17,8 @@ export async function postWhatsAppWebhook(req: Request, res: Response) {
     message: body,
   });
 
-  try {
-    await sendWhatsAppMessage(phone, result.reply);
-  } catch (error) {
-    console.error("WhatsApp send failed:", error);
-  }
+  const twiml = new twilio.twiml.MessagingResponse();
+  twiml.message(result.reply);
 
-  // Acknowledge webhook receipt (Twilio expects a 200 with empty/TwiML body)
-  res.status(200).send("<Response></Response>");
+  res.type("text/xml").status(200).send(twiml.toString());
 }
