@@ -18,7 +18,11 @@ export async function postWhatsAppWebhook(req: Request, res: Response) {
   });
 
   const twiml = new twilio.twiml.MessagingResponse();
-  twiml.message(result.reply);
+  const message = twiml.message(result.reply);
+
+  result.mediaUrls?.forEach((mediaUrl) => {
+    message.media(mediaUrl);
+  });
 
   res.type("text/xml").status(200).send(twiml.toString());
 }

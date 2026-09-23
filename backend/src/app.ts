@@ -16,6 +16,12 @@ import { categoryRouter } from "./modules/category/category.routes";
 
 export const app = express();
 
+const standardMenuFiles: Record<string, string> = {
+	"silver-menu.pdf": "QTN-2026-06F13979.pdf",
+	"gold-menu.pdf": "QTN-2026-1D7EB771.pdf",
+	"platinum-menu.pdf": "QTN-2026-A6B2CEF9.pdf",
+};
+
 app.use(helmet());
 app.use(cors());
 app.use(morgan("dev"));
@@ -24,6 +30,19 @@ app.use(express.urlencoded({ extended: true })); // required for Twilio webhook 
 
 // Static access to generated quotation PDFs
 app.use("/quotations", express.static(path.join(process.cwd(), "quotations")));
+
+app.get("/menus/:fileName", (req, res, next) => {
+	const sourceFileName = standardMenuFiles[req.params.fileName];
+
+	if (!sourceFileName) {
+		next();
+		return;
+	}
+
+	res.type("application/pdf");
+	res.setHeader("Content-Disposition", `inline; filename="${req.params.fileName}"`);
+	res.sendFile(path.join(process.cwd(), "quotations", sourceFileName));
+});
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 

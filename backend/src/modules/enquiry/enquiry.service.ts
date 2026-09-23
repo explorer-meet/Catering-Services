@@ -22,6 +22,13 @@ interface WhatsAppEnquiryData {
   specialRequirements?: string;
 }
 
+interface EnquiryMessageResult {
+  enquiry: Awaited<ReturnType<typeof prisma.enquiry.findUnique>>;
+  reply: string;
+  isComplete: boolean;
+  mediaUrls?: string[];
+}
+
 const WHATSAPP_WELCOME_MESSAGE =
   "✨ Welcome to *Vivah Caterers!*\nThanks for reaching out. We will help you plan the perfect catering menu for your event.";
 const WHATSAPP_FINAL_MESSAGE =
@@ -41,9 +48,9 @@ const EVENT_TYPE_OPTIONS = [
 const POST_BUDGET_OPTIONS = ["📄 Get Menu's", "📍 Visit Our Office", "🤝 In-person Meeting"];
 
 const STANDARD_MENU_PDFS = [
-  "QTN-2026-06F13979.pdf",
-  "QTN-2026-1D7EB771.pdf",
-  "QTN-2026-A6B2CEF9.pdf",
+  { label: "Silver Menu.pdf", fileName: "silver-menu.pdf" },
+  { label: "Gold Menu.pdf", fileName: "gold-menu.pdf" },
+  { label: "Platinum Menu.pdf", fileName: "platinum-menu.pdf" },
 ];
 
 export async function handleEnquiryMessage(input: StartOrContinueInput) {
@@ -100,6 +107,7 @@ export async function handleEnquiryMessage(input: StartOrContinueInput) {
     enquiry: saved,
     reply,
     isComplete: extraction.isComplete,
+    mediaUrls: undefined,
   };
 }
 
@@ -120,6 +128,7 @@ async function handleWhatsAppEnquiry({
   let createEventType = "unspecified";
   let reply = getNextWhatsAppQuestion(enquiry);
   let isComplete = false;
+  let mediaUrls: string[] | undefined;
 
   if (isEventTypeQuestion(lastAssistantMessage)) {
     const eventType = normalizeEventTypeAnswer(input.message);
@@ -162,6 +171,7 @@ async function handleWhatsAppEnquiry({
     if (action === "STANDARD_MENU") {
       updateData.specialRequirements = "Customer requested standard menu PDFs.";
       reply = `${formatStandardMenuReply()}\n\n${WHATSAPP_FINAL_MESSAGE}`;
+      mediaUrls = getStandardMenuMediaUrls();
       isComplete = true;
     } else if (action === "VISIT_OFFICE") {
       updateData.specialRequirements = "Customer requested office location.";
@@ -199,7 +209,7 @@ async function handleWhatsAppEnquiry({
         },
       });
 
-  return { enquiry: saved, reply, isComplete };
+  return { enquiry: saved, reply, isComplete, mediaUrls } satisfies EnquiryMessageResult;
 }
 
 function getNextWhatsAppQuestion(enquiry: Awaited<ReturnType<typeof prisma.enquiry.findUnique>>) {
@@ -281,9 +291,13 @@ function normalizePostBudgetAction(message: string) {
 }
 
 function formatStandardMenuReply() {
+  const menus = STANDARD_MENU_PDFS.map((menu, index) => `${index + 1}. ${menu.label}`).join("\n");
+  return `📄 *Get Menu's*\n\nPlease check these sample menu PDFs:\n\n${menus}`;
+}
+
+function getStandardMenuMediaUrls() {
   const baseUrl = env.appBaseUrl.replace(/\/$/, "");
-  const links = STANDARD_MENU_PDFS.map((fileName, index) => `${index + 1}. ${baseUrl}/quotations/${fileName}`).join("\n");
-  return `📄 *Standard Menu References*\n\nPlease check these sample menu PDFs:\n\n${links}`;
+  return STANDARD_MENU_PDFS.map((menu) => `${baseUrl}/menus/${menu.fileName}`);
 }
 
 function stripEmojiPrefix(message: string) {
