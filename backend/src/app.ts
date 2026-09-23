@@ -17,9 +17,9 @@ import { categoryRouter } from "./modules/category/category.routes";
 export const app = express();
 
 const standardMenuFiles: Record<string, string> = {
-	"silver-menu.pdf": "QTN-2026-06F13979.pdf",
-	"gold-menu.pdf": "QTN-2026-1D7EB771.pdf",
-	"platinum-menu.pdf": "QTN-2026-A6B2CEF9.pdf",
+	"silver-menu.pdf": "VivahEvents_Silver_Menu.pdf",
+	"gold-menu.pdf": "VivahEvents_Gold_Menu.pdf",
+	"platinum-menu.pdf": "VivahEvents_Platinum_Menu.pdf",
 };
 
 app.use(helmet());
@@ -41,7 +41,7 @@ app.get("/menus/:fileName", (req, res, next) => {
 
 	res.type("application/pdf");
 	res.setHeader("Content-Disposition", `inline; filename="${req.params.fileName}"`);
-	res.sendFile(path.join(process.cwd(), "quotations", sourceFileName));
+	res.sendFile(path.join(process.cwd(), "standard-menu", sourceFileName));
 });
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));

@@ -169,10 +169,8 @@ async function handleWhatsAppEnquiry({
     const action = normalizePostBudgetAction(input.message);
 
     if (action === "STANDARD_MENU") {
-      updateData.specialRequirements = "Customer requested standard menu PDFs.";
-      reply = `${formatStandardMenuReply()}\n\n${WHATSAPP_FINAL_MESSAGE}`;
-      mediaUrls = getStandardMenuMediaUrls();
-      isComplete = true;
+      updateData.specialRequirements = "Customer requested standard menu options.";
+      reply = formatStandardMenuOptions();
     } else if (action === "VISIT_OFFICE") {
       updateData.specialRequirements = "Customer requested office location.";
       reply = `${OFFICE_LOCATION_MESSAGE}\n\n${WHATSAPP_FINAL_MESSAGE}`;
@@ -182,6 +180,17 @@ async function handleWhatsAppEnquiry({
       reply = "🤝 *In-person meeting*\n\nPlease share your preferred meeting date, time, and location.";
     } else {
       reply = `Please choose one option by replying with 1, 2, or 3.\n\n${formatPostBudgetOptions()}`;
+    }
+  } else if (isStandardMenuOptionsQuestion(lastAssistantMessage)) {
+    const selectedMenu = normalizeStandardMenuSelection(input.message);
+
+    if (!selectedMenu) {
+      reply = `Please choose a menu by replying with 1, 2, 3, Silver, Gold, or Platinum.\n\n${formatStandardMenuOptions()}`;
+    } else {
+      updateData.specialRequirements = `Customer requested ${selectedMenu.label}.`;
+      reply = `${formatSelectedMenuReply(selectedMenu.label)}\n\n${WHATSAPP_FINAL_MESSAGE}`;
+      mediaUrls = [getStandardMenuMediaUrl(selectedMenu.fileName)];
+      isComplete = true;
     }
   } else if (isMeetingDetailsQuestion(lastAssistantMessage)) {
     updateData.specialRequirements = `Customer requested an in-person meeting. Preferred details: ${input.message.trim()}`;
@@ -290,14 +299,29 @@ function normalizePostBudgetAction(message: string) {
   return null;
 }
 
-function formatStandardMenuReply() {
+function formatStandardMenuOptions() {
   const menus = STANDARD_MENU_PDFS.map((menu, index) => `${index + 1}. ${menu.label}`).join("\n");
-  return `📄 *Get Menu's*\n\nPlease check these sample menu PDFs:\n\n${menus}`;
+  return `📄 *Get Menu's*\n\nWhich menu would you like to receive?\n\n${menus}\n\nReply with 1, 2, 3, Silver, Gold, or Platinum.`;
 }
 
-function getStandardMenuMediaUrls() {
+function formatSelectedMenuReply(menuLabel: string) {
+  return `📄 *${menuLabel}*\n\nWe have attached the selected menu PDF for your reference.`;
+}
+
+function normalizeStandardMenuSelection(message: string) {
+  const normalized = message.trim().toLowerCase();
+  const selectedIndex = Number(normalized) - 1;
+
+  if (STANDARD_MENU_PDFS[selectedIndex]) {
+    return STANDARD_MENU_PDFS[selectedIndex];
+  }
+
+  return STANDARD_MENU_PDFS.find((menu) => menu.label.toLowerCase().includes(normalized));
+}
+
+function getStandardMenuMediaUrl(fileName: string) {
   const baseUrl = env.appBaseUrl.replace(/\/$/, "");
-  return STANDARD_MENU_PDFS.map((menu) => `${baseUrl}/menus/${menu.fileName}`);
+  return `${baseUrl}/menus/${fileName}`;
 }
 
 function stripEmojiPrefix(message: string) {
@@ -344,6 +368,11 @@ function isBudgetQuestion(message: string) {
 function isPostBudgetOptionsQuestion(message: string) {
   const normalized = message.toLowerCase();
   return normalized.includes("what would you like to do next") || normalized.includes("standard menu");
+}
+
+function isStandardMenuOptionsQuestion(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("which menu would you like to receive");
 }
 
 function isMeetingDetailsQuestion(message: string) {
