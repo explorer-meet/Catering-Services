@@ -17,7 +17,11 @@ export async function postWhatsAppWebhook(req: Request, res: Response) {
     message: body,
   });
 
-  await sendWhatsAppMessage(phone, result.reply);
+  try {
+    await sendWhatsAppMessage(phone, result.reply);
+  } catch (error) {
+    console.error("WhatsApp send failed:", error);
+  }
 
   // Acknowledge webhook receipt (Twilio expects a 200 with empty/TwiML body)
   res.status(200).send("<Response></Response>");

@@ -158,6 +158,19 @@ Point your Twilio WhatsApp sandbox/number webhook to:
 
 ## Notes / next steps
 
+### Phase 1 WhatsApp foundation
+
+The WhatsApp flow is intentionally rule-based for the first release. The backend now handles:
+
+- Welcome prompts for new customers (`Hi`, `Hello`, etc.)
+- Menu sharing flows (`View Menu`, menu names)
+- Basic enquiry intake (`Catering Enquiry`, `Wedding`, `Quote`, etc.)
+- FAQ responses (Jain food, outside Ahmedabad, guest capacity)
+- Human handoff (`Talk to Team`, `speak to someone`)
+- AI fallback only for fully unhandled or advanced free-form messages
+
+This keeps the system operational and reliable before a full AI orchestration layer is added.
+
 - Instagram and native mobile app channels can reuse the same `enquiry.service.ts` entry point
   (`handleEnquiryMessage`) — only a channel-specific webhook/controller needs to be added, same as
   the WhatsApp module.
