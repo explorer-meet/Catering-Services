@@ -66,6 +66,14 @@ const OWNER_CATEGORY_OPTIONS = [
   "Fresh Juice",
 ];
 
+const OWNER_MAIN_MENU_OPTIONS = [
+  "📋 View New Enquiries",
+  "📅 View Bookings",
+  "🍽️ Generate Menu",
+  "🤝 View Meeting Requests",
+  "📊 Today's Summary",
+];
+
 export async function handleEnquiryMessage(input: StartOrContinueInput) {
   const customer = await prisma.customer.upsert({
     where: { phone: input.customerPhone },
@@ -76,7 +84,7 @@ export async function handleEnquiryMessage(input: StartOrContinueInput) {
   const shouldStartNewWhatsAppEnquiry =
     input.channel === "WHATSAPP" &&
     !input.enquiryId &&
-    (isGreetingMessage(input.message) || isOwnerMenuStart(input.message));
+    (isGreetingMessage(input.message) || isOwnerMainMenuStart(input.message) || isOwnerMenuStart(input.message));
 
   const enquiry = input.enquiryId
     ? await prisma.enquiry.findUnique({ where: { id: input.enquiryId } })
@@ -145,7 +153,14 @@ async function handleWhatsAppEnquiry({
   let isComplete = false;
   let mediaUrls: string[] | undefined;
 
-  if (isOwnerMenuStart(input.message)) {
+  if (isOwnerMainMenuStart(input.message)) {
+    createEventType = "Owner Command";
+    reply = formatOwnerMainMenu();
+  } else if (isOwnerMainMenuQuestion(lastAssistantMessage)) {
+    createEventType = "Owner Command";
+    reply = await handleOwnerMainMenuSelection(input.message);
+    isComplete = true;
+  } else if (isOwnerMenuStart(input.message)) {
     createEventType = "Owner Menu Draft";
     reply = `👨‍🍳 *Owner Menu Generator*\n\n${formatEventTypeQuestion("What type of event are you planning?")}`;
   } else if (isOwnerEventQuestion(lastAssistantMessage)) {
@@ -378,6 +393,151 @@ function getStandardMenuMediaUrl(fileName: string) {
   return `${baseUrl}/menus/${fileName}`;
 }
 
+function formatOwnerMainMenu() {
+  const options = OWNER_MAIN_MENU_OPTIONS.map((option, index) => `${index + 1}. ${option}`).join("\n");
+  return `👨‍🍳 *Vivah Owner Desk*\n\nWhat would you like to do?\n\n${options}\n\nReply with option number or name.`;
+}
+
+async function handleOwnerMainMenuSelection(message: string) {
+  const action = normalizeOwnerMainMenuAction(message);
+
+  if (action === "VIEW_ENQUIRIES") {
+    return formatOwnerNewEnquiries(await getOwnerNewEnquiries());
+  }
+
+  if (action === "VIEW_BOOKINGS") {
+    return formatOwnerBookings(await getOwnerUpcomingBookings());
+  }
+
+  if (action === "GENERATE_MENU") {
+    return `👨‍🍳 *Owner Menu Generator*\n\n${formatEventTypeQuestion("What type of event are you planning?")}`;
+  }
+
+  if (action === "VIEW_MEETINGS") {
+    return formatOwnerMeetingRequests(await getOwnerMeetingRequests());
+  }
+
+  if (action === "TODAY_SUMMARY") {
+    return formatOwnerTodaySummary(await getOwnerTodaySummary());
+  }
+
+  return `Please choose a valid option by replying with 1, 2, 3, 4, or 5.\n\n${formatOwnerMainMenu()}`;
+}
+
+function normalizeOwnerMainMenuAction(message: string) {
+  const normalized = message.trim().toLowerCase();
+  const selectedOption = Number(normalized);
+
+  if (selectedOption === 1 || normalized.includes("enquir")) return "VIEW_ENQUIRIES";
+  if (selectedOption === 2 || normalized.includes("booking")) return "VIEW_BOOKINGS";
+  if (selectedOption === 3 || normalized.includes("generate") || normalized.includes("menu")) return "GENERATE_MENU";
+  if (selectedOption === 4 || normalized.includes("meeting")) return "VIEW_MEETINGS";
+  if (selectedOption === 5 || normalized.includes("summary") || normalized.includes("today")) return "TODAY_SUMMARY";
+
+  return null;
+}
+
+async function getOwnerNewEnquiries() {
+  return prisma.enquiry.findMany({
+    where: { stage: "ENQUIRY", eventType: { notIn: ["Owner Command", "Owner Menu Draft"] } },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    include: { customer: true },
+  });
+}
+
+function formatOwnerNewEnquiries(enquiries: Awaited<ReturnType<typeof getOwnerNewEnquiries>>) {
+  if (enquiries.length === 0) {
+    return "📋 *New Enquiries*\n\nNo open customer enquiries found right now.";
+  }
+
+  const rows = enquiries.map((enquiry, index) => {
+    const date = formatDateForWhatsApp(enquiry.eventDate);
+    const budget = enquiry.budgetPerPlate ? `₹${Number(enquiry.budgetPerPlate)}/person` : "Not shared";
+    return `${index + 1}. *${enquiry.customer.name}* - ${enquiry.eventType}\n   Guests: ${enquiry.guestCount ?? "Not shared"}\n   Date: ${date}\n   Location: ${enquiry.location ?? "Not shared"}\n   Budget: ${budget}`;
+  });
+
+  return `📋 *New Enquiries*\n\n${rows.join("\n\n")}\n\nReply *Owner* to go back to the owner menu.`;
+}
+
+async function getOwnerUpcomingBookings() {
+  const now = new Date();
+  return prisma.booking.findMany({
+    where: { eventDate: { gte: now } },
+    orderBy: { eventDate: "asc" },
+    take: 5,
+    include: { customer: true },
+  });
+}
+
+function formatOwnerBookings(bookings: Awaited<ReturnType<typeof getOwnerUpcomingBookings>>) {
+  if (bookings.length === 0) {
+    return "📅 *Upcoming Bookings*\n\nNo upcoming bookings found right now.";
+  }
+
+  const rows = bookings.map((booking, index) => {
+    return `${index + 1}. *${booking.eventId}* - ${booking.customer.name}\n   Date: ${formatDateForWhatsApp(booking.eventDate)}\n   Venue: ${booking.venue}\n   Guests: ${booking.guestCount}\n   Balance Due: ₹${Number(booking.balanceDue)}`;
+  });
+
+  return `📅 *Upcoming Bookings*\n\n${rows.join("\n\n")}\n\nReply *Owner* to go back to the owner menu.`;
+}
+
+async function getOwnerMeetingRequests() {
+  return prisma.enquiry.findMany({
+    where: {
+      stage: "ENQUIRY",
+      specialRequirements: { contains: "in-person meeting" },
+      eventType: { notIn: ["Owner Command", "Owner Menu Draft"] },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 5,
+    include: { customer: true },
+  });
+}
+
+function formatOwnerMeetingRequests(enquiries: Awaited<ReturnType<typeof getOwnerMeetingRequests>>) {
+  if (enquiries.length === 0) {
+    return "🤝 *Meeting Requests*\n\nNo pending in-person meeting requests found right now.";
+  }
+
+  const rows = enquiries.map((enquiry, index) => {
+    const meetingDetails = enquiry.specialRequirements?.replace(/^Customer requested an in-person meeting\. ?/i, "") ?? "Details not shared";
+    return `${index + 1}. *${enquiry.customer.name}* - ${enquiry.eventType}\n   Date: ${formatDateForWhatsApp(enquiry.eventDate)}\n   Location: ${enquiry.location ?? "Not shared"}\n   ${meetingDetails}`;
+  });
+
+  return `🤝 *Meeting Requests*\n\n${rows.join("\n\n")}\n\nReply *Owner* to go back to the owner menu.`;
+}
+
+async function getOwnerTodaySummary() {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setDate(endOfDay.getDate() + 1);
+
+  const [newEnquiries, meetingRequests, upcomingBookings, pendingPayments, generatedMenus] = await Promise.all([
+    prisma.enquiry.count({
+      where: {
+        createdAt: { gte: startOfDay, lt: endOfDay },
+        eventType: { notIn: ["Owner Command", "Owner Menu Draft"] },
+      },
+    }),
+    prisma.enquiry.count({ where: { stage: "ENQUIRY", specialRequirements: { contains: "in-person meeting" } } }),
+    prisma.booking.count({ where: { eventDate: { gte: startOfDay } } }),
+    prisma.payment.count({ where: { status: { in: ["PENDING", "PARTIAL"] } } }),
+    prisma.enquiry.count({ where: { eventType: "Owner Menu Draft", createdAt: { gte: startOfDay, lt: endOfDay } } }),
+  ]);
+
+  return { newEnquiries, meetingRequests, upcomingBookings, pendingPayments, generatedMenus };
+}
+
+function formatOwnerTodaySummary(summary: Awaited<ReturnType<typeof getOwnerTodaySummary>>) {
+  return `📊 *Today's Summary*\n\nNew enquiries today: ${summary.newEnquiries}\nMeeting requests pending: ${summary.meetingRequests}\nOwner menus generated today: ${summary.generatedMenus}\nUpcoming bookings: ${summary.upcomingBookings}\nPending payments: ${summary.pendingPayments}\n\nReply *Owner* to go back to the owner menu.`;
+}
+
+function formatDateForWhatsApp(date: Date | null | undefined) {
+  return date ? date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Not shared";
+}
+
 function formatOwnerCategoryOptions() {
   const categories = OWNER_CATEGORY_OPTIONS.map((category, index) => `${index + 1}. ${category}`).join("\n");
   return `🍽️ *Select menu categories*\n\n${categories}\n\nReply with category numbers or names.\nExample: 1, 2, 5, 8`;
@@ -501,9 +661,18 @@ function stripEmojiPrefix(message: string) {
   return message.replace(/^[^A-Za-z0-9]+\s*/, "").trim();
 }
 
+function isOwnerMainMenuStart(message: string) {
+  const normalized = message.trim().toLowerCase();
+  return ["owner", "admin", "owner desk", "owner menu"].includes(normalized);
+}
+
+function isOwnerMainMenuQuestion(message: string) {
+  return message.toLowerCase().includes("vivah owner desk");
+}
+
 function isOwnerMenuStart(message: string) {
   const normalized = message.trim().toLowerCase();
-  return ["owner menu", "generate menu", "create menu", "admin menu"].some((phrase) => normalized.includes(phrase));
+  return ["generate menu", "create menu", "admin menu"].some((phrase) => normalized.includes(phrase));
 }
 
 function isOwnerEventQuestion(message: string) {
