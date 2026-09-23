@@ -1,6 +1,7 @@
 import { Channel, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { NotFoundError } from "../../common/errors";
+import { env } from "../../config/env";
 import { ChatTurn, extractEnquiryFromConversation } from "./enquiry.ai";
 import { EnquiryExtraction } from "./enquiry.schema";
 
@@ -18,12 +19,15 @@ interface WhatsAppEnquiryData {
   eventDate?: Date;
   location?: string;
   budgetPerPlate?: number;
+  specialRequirements?: string;
 }
 
 const WHATSAPP_WELCOME_MESSAGE =
   "✨ Welcome to *Vivah Caterers!*\nThanks for reaching out. We will help you plan the perfect catering menu for your event.";
 const WHATSAPP_FINAL_MESSAGE =
   "✅ *Thank you for sharing your event details!*\n\nOur team will reach out to you shortly for further details.";
+const OFFICE_LOCATION_MESSAGE =
+  "📍 *Vivah Caterers Office*\n\nGoogle Maps: https://maps.app.goo.gl/R94MdmReW2w2H5g48";
 
 const EVENT_TYPE_OPTIONS = [
   "🎂 Birthday Celebration",
@@ -32,6 +36,14 @@ const EVENT_TYPE_OPTIONS = [
   "💍 Wedding Ceremony",
   "🎉 Bachelor Party",
   "✨ Others",
+];
+
+const POST_BUDGET_OPTIONS = ["📄 Get Menu's", "📍 Visit Our Office", "🤝 In-person Meeting"];
+
+const STANDARD_MENU_PDFS = [
+  "QTN-2026-06F13979.pdf",
+  "QTN-2026-1D7EB771.pdf",
+  "QTN-2026-A6B2CEF9.pdf",
 ];
 
 export async function handleEnquiryMessage(input: StartOrContinueInput) {
@@ -142,9 +154,29 @@ async function handleWhatsAppEnquiry({
       reply = "💰 Please share the budget per person as a number, for example: 300, 500, or 800.";
     } else {
       updateData.budgetPerPlate = budgetPerPlate;
-      reply = WHATSAPP_FINAL_MESSAGE;
-      isComplete = true;
+      reply = formatPostBudgetOptions();
     }
+  } else if (isPostBudgetOptionsQuestion(lastAssistantMessage)) {
+    const action = normalizePostBudgetAction(input.message);
+
+    if (action === "STANDARD_MENU") {
+      updateData.specialRequirements = "Customer requested standard menu PDFs.";
+      reply = `${formatStandardMenuReply()}\n\n${WHATSAPP_FINAL_MESSAGE}`;
+      isComplete = true;
+    } else if (action === "VISIT_OFFICE") {
+      updateData.specialRequirements = "Customer requested office location.";
+      reply = `${OFFICE_LOCATION_MESSAGE}\n\n${WHATSAPP_FINAL_MESSAGE}`;
+      isComplete = true;
+    } else if (action === "IN_PERSON_MEETING") {
+      updateData.specialRequirements = "Customer requested an in-person meeting.";
+      reply = "🤝 *In-person meeting*\n\nPlease share your preferred meeting date, time, and location.";
+    } else {
+      reply = `Please choose one option by replying with 1, 2, or 3.\n\n${formatPostBudgetOptions()}`;
+    }
+  } else if (isMeetingDetailsQuestion(lastAssistantMessage)) {
+    updateData.specialRequirements = `Customer requested an in-person meeting. Preferred details: ${input.message.trim()}`;
+    reply = WHATSAPP_FINAL_MESSAGE;
+    isComplete = true;
   } else if (!enquiry) {
     reply = buildReply(formatEventTypeQuestion("What type of event are you planning?"), isGreetingMessage(input.message));
   }
@@ -191,7 +223,7 @@ function getNextWhatsAppQuestion(enquiry: Awaited<ReturnType<typeof prisma.enqui
     return "💰 *What is the budget per person?*\n\nPlease reply with an amount, for example: 300, 500, or 800.";
   }
 
-  return WHATSAPP_FINAL_MESSAGE;
+  return formatPostBudgetOptions();
 }
 
 function buildReply(nextQuestion: string | null | undefined, includeWelcome: boolean) {
@@ -222,6 +254,36 @@ function normalizeEventTypeOption(message: string, previousTurns: ChatTurn[]) {
 
 function normalizeEventTypeAnswer(message: string) {
   return stripEmojiPrefix(EVENT_TYPE_OPTIONS[Number(message.trim()) - 1] ?? message.trim());
+}
+
+function formatPostBudgetOptions() {
+  const options = POST_BUDGET_OPTIONS.map((option, index) => `${index + 1}. ${option}`).join("\n");
+  return `✅ *Thanks! What would you like to do next?*\n\n${options}\n\nReply with 1, 2, or 3.`;
+}
+
+function normalizePostBudgetAction(message: string) {
+  const normalized = message.trim().toLowerCase();
+  const selectedOption = Number(normalized);
+
+  if (selectedOption === 1 || normalized.includes("standard") || normalized.includes("menu")) {
+    return "STANDARD_MENU";
+  }
+
+  if (selectedOption === 2 || normalized.includes("office") || normalized.includes("visit")) {
+    return "VISIT_OFFICE";
+  }
+
+  if (selectedOption === 3 || normalized.includes("meeting") || normalized.includes("person")) {
+    return "IN_PERSON_MEETING";
+  }
+
+  return null;
+}
+
+function formatStandardMenuReply() {
+  const baseUrl = env.appBaseUrl.replace(/\/$/, "");
+  const links = STANDARD_MENU_PDFS.map((fileName, index) => `${index + 1}. ${baseUrl}/quotations/${fileName}`).join("\n");
+  return `📄 *Standard Menu References*\n\nPlease check these sample menu PDFs:\n\n${links}`;
 }
 
 function stripEmojiPrefix(message: string) {
@@ -263,6 +325,16 @@ function isLocationQuestion(message: string) {
 
 function isBudgetQuestion(message: string) {
   return message.toLowerCase().includes("budget per person");
+}
+
+function isPostBudgetOptionsQuestion(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("what would you like to do next") || normalized.includes("standard menu");
+}
+
+function isMeetingDetailsQuestion(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("preferred meeting date") || normalized.includes("in-person meeting");
 }
 
 function parsePositiveNumber(message: string) {

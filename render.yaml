@@ -11,6 +11,8 @@ services:
         value: production
       - key: PORT
         value: 4000
+      - key: APP_BASE_URL
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: OPENAI_API_KEY
