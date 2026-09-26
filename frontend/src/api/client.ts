@@ -124,6 +124,7 @@ export interface AdminItem {
   foodType: string;
   costPerPlate: string | number;
   recipeBaseServings: number;
+  _count?: { ingredients: number };
 }
 
 export interface RecipeLine {

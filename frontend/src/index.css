@@ -2259,6 +2259,351 @@ a.contact-detail-card:hover {
   max-width: 260px;
 }
 
+/* ---------- Owner wizard: stepper + tiles ---------- */
+
+.owner-wizard {
+  padding: 24px 28px;
+}
+
+.owner-stepper {
+  position: relative;
+  margin-bottom: 18px;
+}
+
+.owner-progress-track {
+  position: absolute;
+  top: 21px;
+  left: 16%;
+  right: 16%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.owner-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--maroon), var(--gold));
+  transition: width 0.35s ease;
+}
+
+.owner-steps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.owner-step-item button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.owner-step-item button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.owner-step-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--cream);
+  border: 2px solid var(--border);
+  color: var(--muted);
+  font-weight: 800;
+  transition: all 0.25s ease;
+}
+
+.owner-step-item.current .owner-step-dot {
+  background: var(--maroon);
+  border-color: var(--maroon);
+  color: #fff;
+  box-shadow: 0 0 0 6px rgba(122, 31, 61, 0.12);
+}
+
+.owner-step-item.done .owner-step-dot {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+}
+
+.owner-step-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+
+.owner-step-item.current .owner-step-text {
+  color: var(--maroon-dark);
+}
+
+.owner-step-text small {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.owner-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.owner-back {
+  padding: 8px 16px;
+  border: 1.5px solid var(--maroon);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--maroon);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.owner-back:hover {
+  background: var(--maroon);
+  color: #fff;
+}
+
+.owner-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.owner-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #fffdf9, #fdf6ec);
+  box-shadow: var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.owner-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-strong);
+}
+
+.owner-tile.selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(201, 162, 75, 0.35);
+}
+
+.owner-tile-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.owner-tile-top h4 {
+  margin: 0 0 2px;
+  font-size: 17px;
+}
+
+.owner-tile-top p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.owner-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 62px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--maroon);
+  color: #fff;
+  font-family: Georgia, serif;
+  font-size: 19px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(122, 31, 61, 0.22);
+}
+
+.owner-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.owner-tile:hover .owner-avatar img {
+  transform: scale(1.08);
+}
+
+.owner-avatar.gold {
+  background: linear-gradient(135deg, var(--gold), #b8863a);
+  box-shadow: 0 6px 16px rgba(201, 162, 75, 0.3);
+}
+
+.owner-tile-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.owner-tile-actions .btn {
+  width: 100%;
+  padding: 8px 6px;
+  font-size: 13px;
+}
+
+.btn-danger {
+  background: transparent;
+  color: #9b1c33;
+  border: 1.5px solid #e6afba;
+}
+
+.btn-danger:not(:disabled):hover {
+  background: #9b1c33;
+  border-color: #9b1c33;
+  color: #fff;
+}
+
+/* ---------- Owner modal ---------- */
+
+.owner-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(31, 10, 18, 0.5);
+}
+
+.owner-modal {
+  width: 100%;
+  max-width: 420px;
+  padding: 26px;
+  border-radius: 18px;
+  background: var(--cream);
+  box-shadow: var(--shadow-strong);
+}
+
+.owner-modal h3 {
+  margin-bottom: 18px;
+}
+
+.owner-modal input {
+  margin-bottom: 14px;
+}
+
+.owner-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.owner-confirm {
+  max-width: 400px;
+  text-align: center;
+}
+
+.owner-confirm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 14px;
+  border-radius: 50%;
+  background: #fdecef;
+  color: #9b1c33;
+  font-family: Georgia, serif;
+  font-size: 30px;
+  font-weight: 700;
+  box-shadow: 0 0 0 8px rgba(155, 28, 51, 0.07);
+}
+
+.owner-confirm h3 {
+  margin-bottom: 10px;
+}
+
+.owner-confirm-body {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.owner-confirm-note {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.owner-confirm .owner-modal-actions {
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.btn-danger-solid {
+  background: #9b1c33;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(155, 28, 51, 0.3);
+}
+
+.btn-danger-solid:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
+@media (max-width: 720px) {
+  .owner-progress-track {
+    display: none;
+  }
+
+  .owner-steps {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .owner-step-item button {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .owner-step-text {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
 .owner-hint {
   font-size: 13px;
   color: var(--muted);
@@ -2592,6 +2937,9 @@ a.contact-detail-card:hover {
   .owner-topbar,
   .owner-tabs,
   .owner-statbar,
+  .owner-stepper,
+  .owner-crumbs,
+  .owner-tile-actions,
   .owner-inline-form,
   .owner-actions,
   .owner-alert,

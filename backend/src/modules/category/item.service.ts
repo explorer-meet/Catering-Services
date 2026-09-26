@@ -25,7 +25,11 @@ export async function addItemToCategory(categoryId: string, input: CreateItemInp
 
 export async function listItemsInCategory(categoryId: string) {
   await getCategory(categoryId);
-  return prisma.menuItem.findMany({ where: { categoryId }, orderBy: { name: "asc" } });
+  return prisma.menuItem.findMany({
+    where: { categoryId },
+    orderBy: { name: "asc" },
+    include: { _count: { select: { ingredients: true } } },
+  });
 }
 
 export async function updateItem(itemId: string, input: Partial<CreateItemInput>) {

@@ -27,6 +27,7 @@ import {
   updateItem,
 } from "../api/client";
 import { BrandLogo } from "./BrandLogo";
+import { foodPhoto } from "../utils/images";
 
 interface OwnerPageProps {
   onExit: () => void;
@@ -42,6 +43,13 @@ interface DraftLine {
 }
 
 type Tab = "recipes" | "planner" | "rates";
+type Step = 1 | 2 | 3;
+
+const STEP_LABELS: Record<Step, string> = {
+  1: "Choose category",
+  2: "Choose item",
+  3: "Ingredients & quantities",
+};
 
 const WEIGHT: Partial<Record<IngredientUnit, number>> = { GRAM: 1, KG: 1000 };
 const VOLUME: Partial<Record<IngredientUnit, number>> = { ML: 1, LITRE: 1000 };
@@ -86,13 +94,38 @@ function money(value: number | null | undefined) {
   return `₹${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("");
+}
+
 function errorMessage(err: unknown) {
   const response = (err as { response?: { data?: { error?: string } } })?.response;
   return response?.data?.error ?? "Something went wrong. Please try again.";
 }
 
+/// Food photo tile thumbnail that degrades to initials if the image cannot load
+function TileAvatar({ name, variant }: { name: string; variant?: "gold" }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className={variant ? `owner-avatar ${variant}` : "owner-avatar"}>
+      {failed ? (
+        initials(name)
+      ) : (
+        <img src={foodPhoto(name, 160)} alt="" loading="lazy" onError={() => setFailed(true)} />
+      )}
+    </span>
+  );
+}
+
 export function OwnerPage({ onExit }: OwnerPageProps) {
   const [tab, setTab] = useState<Tab>("recipes");
+  const [step, setStep] = useState<Step>(1);
+
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [items, setItems] = useState<AdminItem[]>([]);
@@ -106,19 +139,21 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [categoryDraft, setCategoryDraft] = useState("");
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
+  const [categoryModal, setCategoryModal] = useState<{ id: string; name: string } | null>(null);
 
   const [newItemName, setNewItemName] = useState("");
   const [newItemCost, setNewItemCost] = useState("");
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [itemDraft, setItemDraft] = useState({ name: "", costPerPlate: "" });
+  const [addItemOpen, setAddItemOpen] = useState(false);
+  const [itemModal, setItemModal] = useState<{ id: string; name: string; costPerPlate: string } | null>(null);
 
   const [personCount, setPersonCount] = useState("500");
   const [requirement, setRequirement] = useState<ItemRequirement | null>(null);
 
   const [planItemIds, setPlanItemIds] = useState<string[]>([]);
   const [planPersonCount, setPlanPersonCount] = useState("500");
+  const [planCategoryId, setPlanCategoryId] = useState<string | null>(null);
+  const [planItems, setPlanItems] = useState<AdminItem[]>([]);
   const [planResult, setPlanResult] = useState<{
     perItem: ItemRequirement[];
     shoppingList: RequirementLine[];
@@ -132,6 +167,15 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
   });
   const [rateDrafts, setRateDrafts] = useState<Record<string, string>>({});
   const [rateSearch, setRateSearch] = useState("");
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    body: string;
+    note?: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === categoryId) ?? null,
@@ -172,6 +216,16 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
       .then(setItems)
       .catch((err) => setError(errorMessage(err)));
   }, [categoryId]);
+
+  useEffect(() => {
+    if (!planCategoryId) {
+      setPlanItems([]);
+      return;
+    }
+    fetchItems(planCategoryId)
+      .then(setPlanItems)
+      .catch((err) => setError(errorMessage(err)));
+  }, [planCategoryId]);
 
   useEffect(() => {
     setRequirement(null);
@@ -225,6 +279,24 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
     window.setTimeout(() => setMessage(null), 2600);
   }
 
+  function goToStep(next: Step) {
+    if (next === 2 && !categoryId) return;
+    if (next === 3 && !itemId) return;
+    setStep(next);
+    setError(null);
+  }
+
+  async function runConfirmed() {
+    if (!confirmDialog) return;
+    setConfirming(true);
+    try {
+      await confirmDialog.onConfirm();
+      setConfirmDialog(null);
+    } finally {
+      setConfirming(false);
+    }
+  }
+
   // ---------- Categories ----------
 
   async function handleAddCategory(event: React.FormEvent) {
@@ -233,20 +305,23 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
     try {
       const created = await createCategory({ name: newCategoryName.trim() });
       setNewCategoryName("");
+      setAddCategoryOpen(false);
       await loadCategories();
       setCategoryId(created.id);
       setItemId(null);
+      setStep(2);
       notify("Category added");
     } catch (err) {
       setError(errorMessage(err));
     }
   }
 
-  async function handleSaveCategory(id: string) {
-    if (!categoryDraft.trim()) return;
+  async function handleSaveCategory(event: React.FormEvent) {
+    event.preventDefault();
+    if (!categoryModal || !categoryModal.name.trim()) return;
     try {
-      await updateCategory(id, { name: categoryDraft.trim() });
-      setEditingCategoryId(null);
+      await updateCategory(categoryModal.id, { name: categoryModal.name.trim() });
+      setCategoryModal(null);
       await loadCategories();
       notify("Category updated");
     } catch (err) {
@@ -255,12 +330,12 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
   }
 
   async function handleDeleteCategory(id: string) {
-    if (!window.confirm("Delete this category? It must have no items.")) return;
     try {
       await deleteCategory(id);
       if (categoryId === id) {
         setCategoryId(null);
         setItemId(null);
+        setStep(1);
       }
       await loadCategories();
       notify("Category deleted");
@@ -281,6 +356,7 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
       });
       setNewItemName("");
       setNewItemCost("");
+      setAddItemOpen(false);
       setItems(await fetchItems(categoryId));
       setItemId(created.id);
       await loadCategories();
@@ -290,14 +366,15 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
     }
   }
 
-  async function handleSaveItem(id: string) {
-    if (!itemDraft.name.trim()) return;
+  async function handleSaveItem(event: React.FormEvent) {
+    event.preventDefault();
+    if (!itemModal || !itemModal.name.trim()) return;
     try {
-      await updateItem(id, {
-        name: itemDraft.name.trim(),
-        costPerPlate: Number(itemDraft.costPerPlate || 0),
+      await updateItem(itemModal.id, {
+        name: itemModal.name.trim(),
+        costPerPlate: Number(itemModal.costPerPlate || 0),
       });
-      setEditingItemId(null);
+      setItemModal(null);
       if (categoryId) setItems(await fetchItems(categoryId));
       notify("Item updated");
     } catch (err) {
@@ -306,10 +383,12 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
   }
 
   async function handleDeleteItem(id: string) {
-    if (!window.confirm("Delete this item and its ingredient recipe?")) return;
     try {
       await deleteItem(id);
-      if (itemId === id) setItemId(null);
+      if (itemId === id) {
+        setItemId(null);
+        setStep(2);
+      }
       if (categoryId) setItems(await fetchItems(categoryId));
       setPlanItemIds((ids) => ids.filter((planId) => planId !== id));
       await loadCategories();
@@ -356,6 +435,7 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
 
       setRecipe(updated);
       setBaseServings(String(updated.recipeBaseServings));
+      if (categoryId) setItems(await fetchItems(categoryId));
       await loadIngredients();
       notify("Recipe and rates saved");
     } catch (err) {
@@ -437,7 +517,6 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
   }
 
   async function handleDeleteIngredient(ingredient: Ingredient) {
-    if (!window.confirm(`Delete "${ingredient.name}" from the ingredient master?`)) return;
     try {
       await deleteIngredient(ingredient.id);
       await loadIngredients();
@@ -499,394 +578,390 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
       )}
 
       {tab === "recipes" && (
-        <main className="owner-grid">
-          <section className="owner-panel">
-            <div className="owner-panel-head">
-              <span className="owner-step">1</span>
-              <h3>Categories</h3>
+        <div className="owner-wizard">
+          <div className="owner-stepper">
+            <div className="owner-progress-track">
+              <div className="owner-progress-fill" style={{ width: `${((step - 1) / 2) * 100}%` }} />
             </div>
-            <form className="owner-inline-form" onSubmit={handleAddCategory}>
-              <input
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="e.g. Pizza"
-                aria-label="New category name"
-              />
-              <button className="btn btn-primary" type="submit">
-                Add
+            <ol className="owner-steps">
+              {([1, 2, 3] as Step[]).map((value) => {
+                const state = step === value ? "current" : step > value ? "done" : "todo";
+                const reachable = value === 1 || (value === 2 && categoryId) || (value === 3 && itemId);
+                return (
+                  <li key={value} className={`owner-step-item ${state}`}>
+                    <button disabled={!reachable} onClick={() => goToStep(value)}>
+                      <span className="owner-step-dot">{step > value ? "✓" : value}</span>
+                      <span className="owner-step-text">
+                        <small>Step {value}</small>
+                        {STEP_LABELS[value]}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
+          <div className="owner-crumbs">
+            {step > 1 && (
+              <button className="owner-back" onClick={() => goToStep((step - 1) as Step)}>
+                ← Back
               </button>
-            </form>
-            <ul className="owner-list">
-              {categories.map((category) => (
-                <li
-                  key={category.id}
-                  className={category.id === categoryId ? "owner-list-row selected" : "owner-list-row"}
-                >
-                  {editingCategoryId === category.id ? (
-                    <div className="owner-edit-row">
-                      <input
-                        value={categoryDraft}
-                        onChange={(e) => setCategoryDraft(e.target.value)}
-                        aria-label="Category name"
-                        autoFocus
-                      />
-                      <button className="owner-icon-btn ok" title="Save" onClick={() => handleSaveCategory(category.id)}>
-                        ✓
-                      </button>
-                      <button className="owner-icon-btn" title="Cancel" onClick={() => setEditingCategoryId(null)}>
-                        ×
-                      </button>
+            )}
+            <span>
+              {selectedCategory ? selectedCategory.name : "All categories"}
+              {selectedItem && step === 3 ? ` › ${selectedItem.name}` : ""}
+            </span>
+          </div>
+
+          {step === 1 && (
+            <section className="owner-panel owner-panel-wide">
+              <div className="owner-panel-head">
+                <h3>Pick a category</h3>
+                <span className="owner-pill">{categories.length} total</span>
+                <button className="btn btn-primary btn-small" onClick={() => setAddCategoryOpen(true)}>
+                  + Add category
+                </button>
+              </div>
+
+              <div className="owner-tiles">
+                {categories.map((category) => (
+                  <article
+                    key={category.id}
+                    className={category.id === categoryId ? "owner-tile selected" : "owner-tile"}
+                  >
+                    <div className="owner-tile-top">
+                      <TileAvatar name={category.name} />
+                      <div>
+                        <h4>{category.name}</h4>
+                        <p>{category._count?.items ?? 0} items</p>
+                      </div>
                     </div>
-                  ) : (
-                    <>
+                    <div className="owner-tile-actions">
                       <button
-                        className="owner-list-main"
+                        className="btn btn-primary btn-small"
                         onClick={() => {
                           setCategoryId(category.id);
                           setItemId(null);
+                          setStep(2);
                         }}
                       >
-                        <span>{category.name}</span>
-                        <small>{category._count?.items ?? 0} items</small>
+                        Open
                       </button>
                       <button
-                        className="owner-icon-btn"
-                        title="Rename category"
-                        onClick={() => {
-                          setEditingCategoryId(category.id);
-                          setCategoryDraft(category.name);
-                        }}
+                        className="btn btn-outline btn-small"
+                        onClick={() => setCategoryModal({ id: category.id, name: category.name })}
                       >
-                        ✎
+                        Update
                       </button>
                       <button
-                        className="owner-icon-btn"
-                        title="Delete category"
-                        onClick={() => handleDeleteCategory(category.id)}
+                        className="btn btn-danger btn-small"
+                        onClick={() =>
+                          setConfirmDialog({
+                            title: "Delete category?",
+                            body: `"${category.name}" will be removed from your menu.`,
+                            note: "A category can only be deleted once all of its items are removed.",
+                            confirmLabel: "Yes, delete",
+                            onConfirm: () => handleDeleteCategory(category.id),
+                          })
+                        }
                       >
-                        ×
+                        Delete
                       </button>
-                    </>
-                  )}
-                </li>
-              ))}
-              {categories.length === 0 && <p className="owner-empty">No categories yet. Add one above.</p>}
-            </ul>
-          </section>
+                    </div>
+                  </article>
+                ))}
+                {categories.length === 0 && <p className="owner-empty">No categories yet. Add one above.</p>}
+              </div>
+            </section>
+          )}
 
-          <section className="owner-panel">
-            <div className="owner-panel-head">
-              <span className="owner-step">2</span>
-              <h3>Items{selectedCategory ? ` · ${selectedCategory.name}` : ""}</h3>
-            </div>
-            {selectedCategory ? (
-              <>
-                <form className="owner-inline-form" onSubmit={handleAddItem}>
-                  <input
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                    placeholder="e.g. Margherita Pizza"
-                    aria-label="New item name"
-                  />
+          {step === 2 && selectedCategory && (
+            <section className="owner-panel owner-panel-wide">
+              <div className="owner-panel-head">
+                <h3>Items in {selectedCategory.name}</h3>
+                <span className="owner-pill">{items.length} total</span>
+                <button className="btn btn-primary btn-small" onClick={() => setAddItemOpen(true)}>
+                  + Add item
+                </button>
+              </div>
+
+              <div className="owner-tiles">
+                {items.map((item) => (
+                  <article key={item.id} className={item.id === itemId ? "owner-tile selected" : "owner-tile"}>
+                    <div className="owner-tile-top">
+                      <TileAvatar name={item.name} variant="gold" />
+                      <div>
+                        <h4>{item.name}</h4>
+                        <p>
+                          {money(Number(item.costPerPlate))} / plate · {item._count?.ingredients ?? 0} ingredients
+                        </p>
+                      </div>
+                    </div>
+                    <div className="owner-tile-actions">
+                      <button
+                        className="btn btn-primary btn-small"
+                        onClick={() => {
+                          setItemId(item.id);
+                          setStep(3);
+                        }}
+                      >
+                        Details
+                      </button>
+                      <button
+                        className="btn btn-outline btn-small"
+                        onClick={() =>
+                          setItemModal({
+                            id: item.id,
+                            name: item.name,
+                            costPerPlate: String(Number(item.costPerPlate)),
+                          })
+                        }
+                      >
+                        Update
+                      </button>
+                      <button
+                        className="btn btn-danger btn-small"
+                        onClick={() =>
+                          setConfirmDialog({
+                            title: "Delete item?",
+                            body: `"${item.name}" and its ingredient recipe will be deleted.`,
+                            note: "This cannot be undone.",
+                            confirmLabel: "Yes, delete",
+                            onConfirm: () => handleDeleteItem(item.id),
+                          })
+                        }
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+                {items.length === 0 && <p className="owner-empty">No items in this category yet.</p>}
+              </div>
+            </section>
+          )}
+
+          {step === 3 && selectedItem && recipe && (
+            <section className="owner-panel owner-panel-wide">
+              <div className="owner-panel-head">
+                <h3>{selectedItem.name} · ingredients</h3>
+                {recipeCost !== null && (
+                  <span className="owner-pill">
+                    Raw cost for {baseServings} persons: {money(recipeCost)}
+                  </span>
+                )}
+              </div>
+
+              <form onSubmit={handleSaveRecipe}>
+                <label className="owner-field">
+                  <span>Recipe is written for</span>
                   <input
                     className="owner-narrow"
-                    value={newItemCost}
-                    onChange={(e) => setNewItemCost(e.target.value)}
-                    placeholder="₹/plate"
                     type="number"
-                    min="0"
-                    aria-label="Cost per plate"
+                    min="1"
+                    value={baseServings}
+                    onChange={(e) => setBaseServings(e.target.value)}
                   />
-                  <button className="btn btn-primary" type="submit">
-                    Add
-                  </button>
-                </form>
-                <ul className="owner-list">
-                  {items.map((item) => (
-                    <li key={item.id} className={item.id === itemId ? "owner-list-row selected" : "owner-list-row"}>
-                      {editingItemId === item.id ? (
-                        <div className="owner-edit-row">
-                          <input
-                            value={itemDraft.name}
-                            onChange={(e) => setItemDraft({ ...itemDraft, name: e.target.value })}
-                            aria-label="Item name"
-                            autoFocus
-                          />
-                          <input
-                            className="owner-narrow"
-                            type="number"
-                            min="0"
-                            value={itemDraft.costPerPlate}
-                            onChange={(e) => setItemDraft({ ...itemDraft, costPerPlate: e.target.value })}
-                            aria-label="Cost per plate"
-                          />
-                          <button className="owner-icon-btn ok" title="Save" onClick={() => handleSaveItem(item.id)}>
-                            ✓
-                          </button>
-                          <button className="owner-icon-btn" title="Cancel" onClick={() => setEditingItemId(null)}>
-                            ×
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <button className="owner-list-main" onClick={() => setItemId(item.id)}>
-                            <span>{item.name}</span>
-                            <small>{money(Number(item.costPerPlate))} / plate</small>
-                          </button>
-                          <button
-                            className="owner-icon-btn"
-                            title="Edit name & price"
-                            onClick={() => {
-                              setEditingItemId(item.id);
-                              setItemDraft({ name: item.name, costPerPlate: String(Number(item.costPerPlate)) });
-                            }}
-                          >
-                            ✎
-                          </button>
-                          <button
-                            className="owner-icon-btn"
-                            title="Delete item"
-                            onClick={() => handleDeleteItem(item.id)}
-                          >
-                            ×
-                          </button>
-                        </>
-                      )}
-                    </li>
+                  <span>persons</span>
+                </label>
+
+                <datalist id="owner-ingredient-options">
+                  {ingredients.map((ingredient) => (
+                    <option key={ingredient.id} value={ingredient.name} />
                   ))}
-                  {items.length === 0 && <p className="owner-empty">No items in this category yet.</p>}
-                </ul>
-              </>
-            ) : (
-              <p className="owner-empty">Pick a category on the left to manage its items.</p>
-            )}
-          </section>
+                </datalist>
 
-          <section className="owner-panel owner-panel-wide">
-            <div className="owner-panel-head">
-              <span className="owner-step">3</span>
-              <h3>Ingredients{selectedItem ? ` · ${selectedItem.name}` : ""}</h3>
-              {selectedItem && recipeCost !== null && (
-                <span className="owner-pill">
-                  Raw cost for {baseServings} persons: {money(recipeCost)}
-                </span>
-              )}
-            </div>
-
-            {selectedItem && recipe ? (
-              <>
-                <form onSubmit={handleSaveRecipe}>
-                  <label className="owner-field">
-                    <span>Recipe is written for</span>
-                    <input
-                      className="owner-narrow"
-                      type="number"
-                      min="1"
-                      value={baseServings}
-                      onChange={(e) => setBaseServings(e.target.value)}
-                    />
-                    <span>persons</span>
-                  </label>
-
-                  <datalist id="owner-ingredient-options">
-                    {ingredients.map((ingredient) => (
-                      <option key={ingredient.id} value={ingredient.name} />
-                    ))}
-                  </datalist>
-
-                  <div className="owner-table-scroll">
-                    <table className="owner-table">
-                      <thead>
-                        <tr>
-                          <th>Ingredient</th>
-                          <th className="owner-col-qty">Quantity</th>
-                          <th className="owner-col-unit">Unit</th>
-                          <th className="owner-col-rate">Rate</th>
-                          <th className="owner-col-cost">Line cost</th>
-                          <th>Note</th>
-                          <th />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {draftLines.map((line) => {
-                          const master = ingredientByName.get(line.ingredientName.trim().toLowerCase());
-                          const purchaseUnit = master?.unit ?? line.unit;
-                          const rate = line.rate !== "" ? Number(line.rate) : null;
-                          const cost = lineCost(Number(line.quantity) || 0, line.unit, rate, purchaseUnit);
-                          return (
-                            <tr key={line.key}>
-                              <td>
-                                <input
-                                  list="owner-ingredient-options"
-                                  value={line.ingredientName}
-                                  onChange={(e) => {
-                                    const name = e.target.value;
-                                    const found = ingredientByName.get(name.trim().toLowerCase());
-                                    updateLine(line.key, {
-                                      ingredientName: name,
-                                      ...(found?.costPerUnit ? { rate: String(Number(found.costPerUnit)) } : {}),
-                                    });
-                                  }}
-                                  placeholder="e.g. Maida"
-                                  aria-label="Ingredient name"
-                                />
-                              </td>
-                              <td>
+                <div className="owner-table-scroll">
+                  <table className="owner-table">
+                    <thead>
+                      <tr>
+                        <th>Ingredient</th>
+                        <th className="owner-col-qty">Quantity</th>
+                        <th className="owner-col-unit">Unit</th>
+                        <th className="owner-col-rate">Rate</th>
+                        <th className="owner-col-cost">Line cost</th>
+                        <th>Note</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {draftLines.map((line) => {
+                        const master = ingredientByName.get(line.ingredientName.trim().toLowerCase());
+                        const purchaseUnit = master?.unit ?? line.unit;
+                        const rate = line.rate !== "" ? Number(line.rate) : null;
+                        const cost = lineCost(Number(line.quantity) || 0, line.unit, rate, purchaseUnit);
+                        return (
+                          <tr key={line.key}>
+                            <td>
+                              <input
+                                list="owner-ingredient-options"
+                                value={line.ingredientName}
+                                onChange={(e) => {
+                                  const name = e.target.value;
+                                  const found = ingredientByName.get(name.trim().toLowerCase());
+                                  updateLine(line.key, {
+                                    ingredientName: name,
+                                    ...(found?.costPerUnit ? { rate: String(Number(found.costPerUnit)) } : {}),
+                                  });
+                                }}
+                                placeholder="e.g. Maida"
+                                aria-label="Ingredient name"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.001"
+                                value={line.quantity}
+                                onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
+                                placeholder="2"
+                                aria-label="Quantity"
+                              />
+                            </td>
+                            <td>
+                              <select
+                                value={line.unit}
+                                onChange={(e) => updateLine(line.key, { unit: e.target.value as IngredientUnit })}
+                                aria-label="Unit"
+                              >
+                                {INGREDIENT_UNITS.map((unit) => (
+                                  <option key={unit} value={unit}>
+                                    {UNIT_LABELS[unit]}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td>
+                              <div className="owner-rate-cell">
+                                <span className="owner-rupee">₹</span>
                                 <input
                                   type="number"
                                   min="0"
-                                  step="0.001"
-                                  value={line.quantity}
-                                  onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
-                                  placeholder="2"
-                                  aria-label="Quantity"
+                                  step="0.01"
+                                  value={line.rate}
+                                  onChange={(e) => updateLine(line.key, { rate: e.target.value })}
+                                  placeholder="0"
+                                  aria-label="Purchase rate"
                                 />
-                              </td>
-                              <td>
-                                <select
-                                  value={line.unit}
-                                  onChange={(e) => updateLine(line.key, { unit: e.target.value as IngredientUnit })}
-                                  aria-label="Unit"
-                                >
-                                  {INGREDIENT_UNITS.map((unit) => (
-                                    <option key={unit} value={unit}>
-                                      {UNIT_LABELS[unit]}
-                                    </option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td>
-                                <div className="owner-rate-cell">
-                                  <span className="owner-rupee">₹</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={line.rate}
-                                    onChange={(e) => updateLine(line.key, { rate: e.target.value })}
-                                    placeholder="0"
-                                    aria-label="Purchase rate"
-                                  />
-                                  <small>/{UNIT_LABELS[purchaseUnit]}</small>
-                                </div>
-                              </td>
-                              <td className="owner-cost-cell">{money(cost)}</td>
-                              <td>
-                                <input
-                                  value={line.notes}
-                                  onChange={(e) => updateLine(line.key, { notes: e.target.value })}
-                                  placeholder="optional"
-                                  aria-label="Note"
-                                />
-                              </td>
-                              <td>
-                                <button
-                                  type="button"
-                                  className="owner-icon-btn"
-                                  title="Remove ingredient"
-                                  onClick={() =>
-                                    setDraftLines((lines) =>
-                                      lines.length === 1 ? [emptyLine()] : lines.filter((l) => l.key !== line.key),
-                                    )
-                                  }
-                                >
-                                  ×
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="owner-actions">
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={() => setDraftLines((lines) => [...lines, emptyLine()])}
-                    >
-                      + Add ingredient
-                    </button>
-                    <button className="btn btn-primary" type="submit" disabled={saving}>
-                      {saving ? "Saving…" : "Save recipe & rates"}
-                    </button>
-                    <span className="owner-hint">Rates typed here also update the ingredient master.</span>
-                  </div>
-                </form>
-
-                <div className="owner-divider" />
-
-                <h4>Requirement calculator</h4>
-                <div className="owner-actions">
-                  <label className="owner-field">
-                    <span>Cooking for</span>
-                    <input
-                      className="owner-narrow"
-                      type="number"
-                      min="1"
-                      value={personCount}
-                      onChange={(e) => setPersonCount(e.target.value)}
-                    />
-                    <span>persons</span>
-                  </label>
-                  {[100, 250, 500, 1000].map((count) => (
-                    <button
-                      key={count}
-                      type="button"
-                      className={personCount === String(count) ? "owner-chip active" : "owner-chip"}
-                      onClick={() => setPersonCount(String(count))}
-                    >
-                      {count}
-                    </button>
-                  ))}
-                  <button type="button" className="btn btn-gold" onClick={handleCalculate}>
-                    Calculate
-                  </button>
+                                <small>/{UNIT_LABELS[purchaseUnit]}</small>
+                              </div>
+                            </td>
+                            <td className="owner-cost-cell">{money(cost)}</td>
+                            <td>
+                              <input
+                                value={line.notes}
+                                onChange={(e) => updateLine(line.key, { notes: e.target.value })}
+                                placeholder="optional"
+                                aria-label="Note"
+                              />
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="owner-icon-btn"
+                                title="Remove ingredient"
+                                onClick={() =>
+                                  setDraftLines((lines) =>
+                                    lines.length === 1 ? [emptyLine()] : lines.filter((l) => l.key !== line.key),
+                                  )
+                                }
+                              >
+                                ×
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
 
-                {requirement && (
-                  <div className="owner-result">
-                    <p className="owner-result-title">
-                      {requirement.itemName} · {requirement.personCount} persons
-                    </p>
-                    <table className="owner-table owner-table-read">
-                      <thead>
-                        <tr>
-                          <th>Ingredient</th>
-                          <th>Required</th>
-                          <th>Est. cost</th>
+                <div className="owner-actions">
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setDraftLines((lines) => [...lines, emptyLine()])}
+                  >
+                    + Add ingredient
+                  </button>
+                  <button className="btn btn-primary" type="submit" disabled={saving}>
+                    {saving ? "Saving…" : "Save recipe & rates"}
+                  </button>
+                  <span className="owner-hint">Rates typed here also update the ingredient master.</span>
+                </div>
+              </form>
+
+              <div className="owner-divider" />
+
+              <h4>Requirement calculator</h4>
+              <div className="owner-actions">
+                <label className="owner-field">
+                  <span>Cooking for</span>
+                  <input
+                    className="owner-narrow"
+                    type="number"
+                    min="1"
+                    value={personCount}
+                    onChange={(e) => setPersonCount(e.target.value)}
+                  />
+                  <span>persons</span>
+                </label>
+                {[100, 250, 500, 1000].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    className={personCount === String(count) ? "owner-chip active" : "owner-chip"}
+                    onClick={() => setPersonCount(String(count))}
+                  >
+                    {count}
+                  </button>
+                ))}
+                <button type="button" className="btn btn-gold" onClick={handleCalculate}>
+                  Calculate
+                </button>
+              </div>
+
+              {requirement && (
+                <div className="owner-result">
+                  <p className="owner-result-title">
+                    {requirement.itemName} · {requirement.personCount} persons
+                  </p>
+                  <table className="owner-table owner-table-read">
+                    <thead>
+                      <tr>
+                        <th>Ingredient</th>
+                        <th>Required</th>
+                        <th>Est. cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {requirement.lines.map((line) => (
+                        <tr key={line.ingredientId}>
+                          <td>{line.ingredientName}</td>
+                          <td>
+                            <strong>{formatQty(line.quantity, line.unit)}</strong>
+                          </td>
+                          <td>{money(line.estimatedCost)}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {requirement.lines.map((line) => (
-                          <tr key={line.ingredientId}>
-                            <td>{line.ingredientName}</td>
-                            <td>
-                              <strong>{formatQty(line.quantity, line.unit)}</strong>
-                            </td>
-                            <td>{money(line.estimatedCost)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {requirement.estimatedTotalCost !== null && (
-                      <p className="owner-total">
-                        Estimated raw material cost: {money(requirement.estimatedTotalCost)} ·{" "}
-                        {money(requirement.estimatedTotalCost / requirement.personCount)} per plate
-                      </p>
-                    )}
-                    <button type="button" className="btn btn-outline" onClick={() => window.print()}>
-                      Print list
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="owner-empty">Pick an item to add its ingredients.</p>
-            )}
-          </section>
-        </main>
+                      ))}
+                    </tbody>
+                  </table>
+                  {requirement.estimatedTotalCost !== null && (
+                    <p className="owner-total">
+                      Estimated raw material cost: {money(requirement.estimatedTotalCost)} ·{" "}
+                      {money(requirement.estimatedTotalCost / requirement.personCount)} per plate
+                    </p>
+                  )}
+                  <button type="button" className="btn btn-outline" onClick={() => window.print()}>
+                    Print list
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+        </div>
       )}
 
       {tab === "planner" && (
@@ -899,15 +974,15 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
               {categories.map((category) => (
                 <button
                   key={category.id}
-                  className={category.id === categoryId ? "owner-chip active" : "owner-chip"}
-                  onClick={() => setCategoryId(category.id)}
+                  className={category.id === planCategoryId ? "owner-chip active" : "owner-chip"}
+                  onClick={() => setPlanCategoryId(category.id)}
                 >
                   {category.name}
                 </button>
               ))}
             </div>
             <ul className="owner-list">
-              {items.map((item) => (
+              {planItems.map((item) => (
                 <li key={item.id} className="owner-list-row">
                   <label className="owner-check">
                     <input
@@ -924,7 +999,7 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
                   </label>
                 </li>
               ))}
-              {items.length === 0 && <p className="owner-empty">Pick a category above to list its items.</p>}
+              {planItems.length === 0 && <p className="owner-empty">Pick a category above to list its items.</p>}
             </ul>
             <div className="owner-actions">
               <label className="owner-field">
@@ -1112,11 +1187,18 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
                             Save
                           </button>
                           <button
-                            className="owner-icon-btn"
-                            title="Delete ingredient"
-                            onClick={() => handleDeleteIngredient(ingredient)}
+                            className="btn btn-danger btn-small"
+                            onClick={() =>
+                              setConfirmDialog({
+                                title: "Delete ingredient?",
+                                body: `"${ingredient.name}" will be removed from the ingredient master.`,
+                                note: "Ingredients already used in a recipe cannot be deleted.",
+                                confirmLabel: "Yes, delete",
+                                onConfirm: () => handleDeleteIngredient(ingredient),
+                              })
+                            }
                           >
-                            ×
+                            Delete
                           </button>
                         </td>
                       </tr>
@@ -1128,6 +1210,185 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
             {visibleIngredients.length === 0 && <p className="owner-empty">No ingredients match your search.</p>}
           </section>
         </main>
+      )}
+
+      {confirmDialog && (
+        <div className="owner-modal-backdrop" onClick={() => !confirming && setConfirmDialog(null)}>
+          <div
+            className="owner-modal owner-confirm"
+            role="alertdialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="owner-confirm-icon" aria-hidden="true">
+              !
+            </span>
+            <h3>{confirmDialog.title}</h3>
+            <p className="owner-confirm-body">{confirmDialog.body}</p>
+            {confirmDialog.note && <p className="owner-confirm-note">{confirmDialog.note}</p>}
+            <div className="owner-modal-actions">
+              <button className="btn btn-outline" disabled={confirming} onClick={() => setConfirmDialog(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-danger-solid" disabled={confirming} onClick={runConfirmed}>
+                {confirming ? "Deleting…" : confirmDialog.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addCategoryOpen && (
+        <div
+          className="owner-modal-backdrop"
+          onClick={() => {
+            setAddCategoryOpen(false);
+            setNewCategoryName("");
+          }}
+        >
+          <form className="owner-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleAddCategory}>
+            <h3>New category</h3>
+            <label className="field-label" htmlFor="new-category-name">
+              Category name
+            </label>
+            <input
+              id="new-category-name"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="e.g. Pizza"
+              autoFocus
+            />
+            <div className="owner-modal-actions">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  setAddCategoryOpen(false);
+                  setNewCategoryName("");
+                }}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={!newCategoryName.trim()}>
+                Add category
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {addItemOpen && (
+        <div
+          className="owner-modal-backdrop"
+          onClick={() => {
+            setAddItemOpen(false);
+            setNewItemName("");
+            setNewItemCost("");
+          }}
+        >
+          <form className="owner-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleAddItem}>
+            <h3>New item{selectedCategory ? ` in ${selectedCategory.name}` : ""}</h3>
+            <label className="field-label" htmlFor="new-item-name">
+              Item name
+            </label>
+            <input
+              id="new-item-name"
+              value={newItemName}
+              onChange={(e) => setNewItemName(e.target.value)}
+              placeholder="e.g. Margherita Pizza"
+              autoFocus
+            />
+            <label className="field-label" htmlFor="new-item-cost">
+              Price per plate (₹)
+            </label>
+            <input
+              id="new-item-cost"
+              type="number"
+              min="0"
+              step="0.01"
+              value={newItemCost}
+              onChange={(e) => setNewItemCost(e.target.value)}
+              placeholder="0"
+            />
+            <div className="owner-modal-actions">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  setAddItemOpen(false);
+                  setNewItemName("");
+                  setNewItemCost("");
+                }}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={!newItemName.trim()}>
+                Add item
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {categoryModal && (
+        <div className="owner-modal-backdrop" onClick={() => setCategoryModal(null)}>
+          <form className="owner-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSaveCategory}>
+            <h3>Update category</h3>
+            <label className="field-label" htmlFor="category-modal-name">
+              Category name
+            </label>
+            <input
+              id="category-modal-name"
+              value={categoryModal.name}
+              onChange={(e) => setCategoryModal({ ...categoryModal, name: e.target.value })}
+              autoFocus
+            />
+            <div className="owner-modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setCategoryModal(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Save changes
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {itemModal && (
+        <div className="owner-modal-backdrop" onClick={() => setItemModal(null)}>
+          <form className="owner-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSaveItem}>
+            <h3>Update item</h3>
+            <label className="field-label" htmlFor="item-modal-name">
+              Item name
+            </label>
+            <input
+              id="item-modal-name"
+              value={itemModal.name}
+              onChange={(e) => setItemModal({ ...itemModal, name: e.target.value })}
+              autoFocus
+            />
+            <label className="field-label" htmlFor="item-modal-cost">
+              Price per plate (₹)
+            </label>
+            <input
+              id="item-modal-cost"
+              type="number"
+              min="0"
+              step="0.01"
+              value={itemModal.costPerPlate}
+              onChange={(e) => setItemModal({ ...itemModal, costPerPlate: e.target.value })}
+            />
+            <div className="owner-modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setItemModal(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Save changes
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );
