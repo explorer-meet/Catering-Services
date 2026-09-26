@@ -53,7 +53,9 @@ export function Footer({ onNavigate }: { onNavigate: (view: "landing" | "gallery
           </div>
         </div>
       </div>
-      <p className="footer-copy">© {new Date().getFullYear()} Vivah Caterers. All rights reserved.</p>
+      <p className="footer-copy">
+        © {new Date().getFullYear()} Vivah Caterers. All rights reserved. · <a href="#owner">Owner Console</a>
+      </p>
     </footer>
   );
 }

@@ -31,7 +31,24 @@ export async function listItemsInCategory(categoryId: string) {
 export async function updateItem(itemId: string, input: Partial<CreateItemInput>) {
   const item = await prisma.menuItem.findUnique({ where: { id: itemId } });
   if (!item) throw new NotFoundError("MenuItem");
-  return prisma.menuItem.update({ where: { id: itemId }, data: input });
+
+  const data: Partial<CreateItemInput> = {};
+  const fields: (keyof CreateItemInput)[] = [
+    "name",
+    "cuisine",
+    "foodType",
+    "costPerPlate",
+    "isJainSafe",
+    "isVegan",
+    "isGlutenFree",
+    "containsOnionGarlic",
+    "allergens",
+  ];
+  for (const field of fields) {
+    if (input[field] !== undefined) (data as Record<string, unknown>)[field] = input[field];
+  }
+
+  return prisma.menuItem.update({ where: { id: itemId }, data });
 }
 
 export async function deleteItem(itemId: string) {

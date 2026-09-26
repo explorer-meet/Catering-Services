@@ -66,6 +66,19 @@ enum GuestTier {
   HUNDRED
 }
 
+enum IngredientUnit {
+  KG
+  GRAM
+  LITRE
+  ML
+  PIECE
+  PACKET
+  DOZEN
+  BUNDLE
+  TABLESPOON
+  TEASPOON
+}
+
 // ---------- Core entities ----------
 
 model Customer {
@@ -157,11 +170,47 @@ model MenuItem {
   containsOnionGarlic Boolean @default(true)
   allergens    String?  // comma separated
 
+  /// Number of persons the stored ingredient recipe is written for (quantities scale from this)
+  recipeBaseServings Int @default(50)
+
   createdAt    DateTime @default(now())
 
   packageItems MenuPackageItem[]
+  ingredients  MenuItemIngredient[]
 
   @@index([categoryId])
+}
+
+// ---------- Ingredients / recipes ----------
+
+/// Master list of raw materials the owner buys (Maida, Tomato, Cheese, ...)
+model Ingredient {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  unit        IngredientUnit @default(KG)
+  costPerUnit Decimal?       @db.Decimal(10, 2)
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  menuItems   MenuItemIngredient[]
+}
+
+/// Quantity of one ingredient required to prepare a menu item for `recipeBaseServings` persons
+model MenuItemIngredient {
+  id           String         @id @default(uuid())
+  menuItemId   String
+  menuItem     MenuItem       @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient     @relation(fields: [ingredientId], references: [id])
+  quantity     Decimal        @db.Decimal(12, 3)
+  unit         IngredientUnit
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([menuItemId, ingredientId])
+  @@index([ingredientId])
 }
 
 /// One recommended package option (AI generates 2-3 per enquiry)

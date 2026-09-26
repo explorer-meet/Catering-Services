@@ -39,7 +39,14 @@ export async function updateCategory(
   params: { name?: string; description?: string; displayOrder?: number },
 ) {
   await getCategory(id);
-  return prisma.menuCategory.update({ where: { id }, data: params });
+  return prisma.menuCategory.update({
+    where: { id },
+    data: {
+      ...(params.name !== undefined ? { name: params.name } : {}),
+      ...(params.description !== undefined ? { description: params.description } : {}),
+      ...(params.displayOrder !== undefined ? { displayOrder: params.displayOrder } : {}),
+    },
+  });
 }
 
 export async function deleteCategory(id: string) {

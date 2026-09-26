@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LandingPage } from "./components/LandingPage";
 import { EventWizard } from "./components/EventWizard";
 import { MenuResults } from "./components/MenuResults";
@@ -8,11 +8,14 @@ import { GalleryPage } from "./components/GalleryPage";
 import { ServicesPage } from "./components/ServicesPage";
 import { ContactPage } from "./components/ContactPage";
 import { PlannerPage } from "./components/PlannerPage";
+import { OwnerPage } from "./components/OwnerPage";
 
-type View = "landing" | "gallery" | "services" | "contact" | "wizard" | "results";
+type View = "landing" | "gallery" | "services" | "contact" | "wizard" | "results" | "owner";
 
 export function App() {
-  const [view, setView] = useState<View>("landing");
+  const [view, setView] = useState<View>(() =>
+    window.location.hash === "#owner" ? "owner" : "landing",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [enquiryId, setEnquiryId] = useState<string | null>(null);
   const [whatsappLink, setWhatsappLink] = useState<string | null>(null);
@@ -20,8 +23,19 @@ export function App() {
   const [packages, setPackages] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    function syncFromHash() {
+      const isOwner = window.location.hash === "#owner";
+      setView((current) => (isOwner ? "owner" : current === "owner" ? "landing" : current));
+    }
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, []);
+
   function navigate(nextView: View) {
     setView(nextView);
+    if (nextView === "owner") window.location.hash = "#owner";
+    else if (window.location.hash === "#owner") window.location.hash = "";
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -52,6 +66,10 @@ export function App() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (view === "owner") {
+    return <OwnerPage onExit={() => navigate("landing")} />;
   }
 
   if (view === "results" && enquiryId) {

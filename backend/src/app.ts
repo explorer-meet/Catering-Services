@@ -13,6 +13,7 @@ import { bookingRouter } from "./modules/booking/booking.routes";
 import { paymentRouter } from "./modules/payment/payment.routes";
 import { whatsappRouter } from "./modules/whatsapp/whatsapp.routes";
 import { categoryRouter } from "./modules/category/category.routes";
+import { ingredientRouter, recipeRouter } from "./modules/ingredient/ingredient.routes";
 
 export const app = express();
 
@@ -55,5 +56,7 @@ app.use("/api/bookings", bookingRouter);
 app.use("/api/payments", paymentRouter);
 app.use("/api/whatsapp", whatsappRouter);
 app.use("/api/admin/categories", categoryRouter);
+app.use("/api/admin/ingredients", ingredientRouter);
+app.use("/api/admin/recipes", recipeRouter);
 
 app.use(errorHandler);
