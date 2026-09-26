@@ -28,8 +28,14 @@ import {
 } from "../api/client";
 import { BrandLogo } from "./BrandLogo";
 import { foodPhoto } from "../utils/images";
+import { VendorsPanel } from "./VendorsPanel";
+import { B2BPanel } from "./B2BPanel";
+import { TeamPanel } from "./TeamPanel";
+import { AuthUser, USER_ROLE_LABELS, UserRole } from "../api/client";
 
 interface OwnerPageProps {
+  currentUser: AuthUser;
+  onSignOut: () => void;
   onExit: () => void;
 }
 
@@ -42,7 +48,16 @@ interface DraftLine {
   notes: string;
 }
 
-type Tab = "recipes" | "planner" | "rates";
+type Tab = "recipes" | "planner" | "rates" | "vendors" | "b2b" | "team";
+
+const TABS: { value: Tab; label: string; roles: UserRole[] }[] = [
+  { value: "recipes", label: "Menu & Recipes", roles: ["OWNER", "MANAGER"] },
+  { value: "planner", label: "Contract Planner", roles: ["OWNER", "MANAGER"] },
+  { value: "rates", label: "Ingredient Rates", roles: ["OWNER", "MANAGER"] },
+  { value: "vendors", label: "Vendors", roles: ["OWNER", "MANAGER", "ACCOUNTANT"] },
+  { value: "b2b", label: "B2B Orders", roles: ["OWNER", "MANAGER", "ACCOUNTANT"] },
+  { value: "team", label: "Team", roles: ["OWNER", "MANAGER", "ACCOUNTANT"] },
+];
 type Step = 1 | 2 | 3;
 
 const STEP_LABELS: Record<Step, string> = {
@@ -122,8 +137,9 @@ function TileAvatar({ name, variant }: { name: string; variant?: "gold" }) {
   );
 }
 
-export function OwnerPage({ onExit }: OwnerPageProps) {
-  const [tab, setTab] = useState<Tab>("recipes");
+export function OwnerPage({ currentUser, onSignOut, onExit }: OwnerPageProps) {
+  const visibleTabs = TABS.filter((entry) => entry.roles.includes(currentUser.role));
+  const [tab, setTab] = useState<Tab>(visibleTabs[0].value);
   const [step, setStep] = useState<Step>(1);
 
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -203,9 +219,10 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
   }, [draftLines, ingredientByName]);
 
   useEffect(() => {
+    if (currentUser.role === "ACCOUNTANT") return;
     loadCategories();
     loadIngredients();
-  }, []);
+  }, [currentUser.role]);
 
   useEffect(() => {
     if (!categoryId) {
@@ -538,35 +555,46 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
           <span className="owner-badge">Owner Console</span>
         </div>
         <nav className="owner-tabs">
-          <button className={tab === "recipes" ? "owner-tab active" : "owner-tab"} onClick={() => setTab("recipes")}>
-            Menu &amp; Recipes
-          </button>
-          <button className={tab === "planner" ? "owner-tab active" : "owner-tab"} onClick={() => setTab("planner")}>
-            Contract Planner
-          </button>
-          <button className={tab === "rates" ? "owner-tab active" : "owner-tab"} onClick={() => setTab("rates")}>
-            Ingredient Rates
-          </button>
+          {visibleTabs.map((entry) => (
+            <button
+              key={entry.value}
+              className={tab === entry.value ? "owner-tab active" : "owner-tab"}
+              onClick={() => setTab(entry.value)}
+            >
+              {entry.label}
+            </button>
+          ))}
         </nav>
-        <button className="btn btn-outline" onClick={onExit}>
-          Back to site
-        </button>
+        <div className="owner-topbar-user">
+          <span className="owner-who">
+            {currentUser.name}
+            <small>{USER_ROLE_LABELS[currentUser.role]}</small>
+          </span>
+          <button className="btn btn-outline btn-small" onClick={onExit}>
+            Site
+          </button>
+          <button className="btn btn-danger btn-small" onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
       </header>
 
-      <div className="owner-statbar">
-        <span>
-          <strong>{categories.length}</strong> categories
-        </span>
-        <span>
-          <strong>{categories.reduce((sum, c) => sum + (c._count?.items ?? 0), 0)}</strong> menu items
-        </span>
-        <span>
-          <strong>{ingredients.length}</strong> ingredients
-        </span>
-        <span>
-          <strong>{ingredients.filter((i) => i.costPerUnit !== null).length}</strong> priced
-        </span>
-      </div>
+      {currentUser.role !== "ACCOUNTANT" && (
+        <div className="owner-statbar">
+          <span>
+            <strong>{categories.length}</strong> categories
+          </span>
+          <span>
+            <strong>{categories.reduce((sum, c) => sum + (c._count?.items ?? 0), 0)}</strong> menu items
+          </span>
+          <span>
+            <strong>{ingredients.length}</strong> ingredients
+          </span>
+          <span>
+            <strong>{ingredients.filter((i) => i.costPerUnit !== null).length}</strong> priced
+          </span>
+        </div>
+      )}
 
       {(error || message) && (
         <div className={error ? "owner-alert owner-alert-error" : "owner-alert owner-alert-ok"}>
@@ -1212,8 +1240,22 @@ export function OwnerPage({ onExit }: OwnerPageProps) {
         </main>
       )}
 
-      {confirmDialog && (
-        <div className="owner-modal-backdrop" onClick={() => !confirming && setConfirmDialog(null)}>
+      {tab === "vendors" && (
+        <VendorsPanel onNotify={notify} onError={setError} requestConfirm={setConfirmDialog} />
+      )}
+
+      {tab === "b2b" && <B2BPanel onNotify={notify} onError={setError} requestConfirm={setConfirmDialog} />}
+
+      {tab === "team" && (
+        <TeamPanel
+          currentUser={currentUser}
+          onNotify={notify}
+          onError={setError}
+          requestConfirm={setConfirmDialog}
+        />
+      )}
+
+      {confirmDialog && (        <div className="owner-modal-backdrop" onClick={() => !confirming && setConfirmDialog(null)}>
           <div
             className="owner-modal owner-confirm"
             role="alertdialog"

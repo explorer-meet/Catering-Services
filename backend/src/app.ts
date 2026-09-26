@@ -14,6 +14,11 @@ import { paymentRouter } from "./modules/payment/payment.routes";
 import { whatsappRouter } from "./modules/whatsapp/whatsapp.routes";
 import { categoryRouter } from "./modules/category/category.routes";
 import { ingredientRouter, recipeRouter } from "./modules/ingredient/ingredient.routes";
+import { vendorRouter } from "./modules/vendor/vendor.routes";
+import { b2bRouter } from "./modules/b2b/b2b.routes";
+import { authRouter, userRouter } from "./modules/auth/auth.routes";
+import { requireAuth, requireRole } from "./common/middleware/auth";
+import { rateLimit } from "./common/middleware/rateLimit";
 
 export const app = express();
 
@@ -55,8 +60,26 @@ app.use("/api/customization", customizationRouter);
 app.use("/api/bookings", bookingRouter);
 app.use("/api/payments", paymentRouter);
 app.use("/api/whatsapp", whatsappRouter);
-app.use("/api/admin/categories", categoryRouter);
-app.use("/api/admin/ingredients", ingredientRouter);
-app.use("/api/admin/recipes", recipeRouter);
+
+// ---------- Authenticated owner console ----------
+
+const loginLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000,
+	max: 10,
+	message: "Too many sign-in attempts. Please try again in a few minutes.",
+});
+
+const menuStaff = [requireAuth, requireRole("OWNER", "MANAGER")];
+const accountsStaff = [requireAuth, requireRole("OWNER", "MANAGER", "ACCOUNTANT")];
+
+app.use("/api/auth/login", loginLimiter);
+app.use("/api/auth", authRouter);
+app.use("/api/admin/users", userRouter);
+
+app.use("/api/admin/categories", menuStaff, categoryRouter);
+app.use("/api/admin/ingredients", menuStaff, ingredientRouter);
+app.use("/api/admin/recipes", menuStaff, recipeRouter);
+app.use("/api/admin/vendors", accountsStaff, vendorRouter);
+app.use("/api/admin/b2b-orders", accountsStaff, b2bRouter);
 
 app.use(errorHandler);

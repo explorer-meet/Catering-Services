@@ -79,7 +79,71 @@ enum IngredientUnit {
   TEASPOON
 }
 
+enum VendorCategory {
+  VEGETABLES
+  GROCERY
+  DAIRY
+  BAKERY
+  MEAT
+  BEVERAGES
+  EQUIPMENT
+  DECORATION
+  STAFFING
+  TRANSPORT
+  PARTNER_CATERER
+  OTHER
+}
+
+enum B2BDirection {
+  OUTGOING
+  INCOMING
+}
+
+enum B2BOrderStatus {
+  DRAFT
+  CONFIRMED
+  IN_PROGRESS
+  DELIVERED
+  CANCELLED
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  ACCOUNTANT
+}
+
+enum VendorEntryType {
+  PURCHASE
+  PAYMENT
+  CREDIT_NOTE
+  OPENING_BALANCE
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  CARD
+  OTHER
+}
+
 // ---------- Core entities ----------
+
+/// Staff account that can sign in to the owner console
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(MANAGER)
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
 
 model Customer {
   id          String   @id @default(uuid())
@@ -211,6 +275,131 @@ model MenuItemIngredient {
 
   @@unique([menuItemId, ingredientId])
   @@index([ingredientId])
+}
+
+// ---------- Vendors ----------
+
+/// A supplier the owner buys from, with payout details and a running account
+model Vendor {
+  id             String          @id @default(uuid())
+  name           String
+  category       VendorCategory  @default(OTHER)
+  contactPerson  String?
+  phone          String
+  email          String?
+  address        String?         @db.Text
+  gstNumber      String?
+  paymentTerms   String?         // e.g. "Net 15 days"
+  notes          String?         @db.Text
+  isActive       Boolean         @default(true)
+
+  // Payout details
+  bankName       String?
+  accountName    String?
+  accountNumber  String?
+  ifscCode       String?
+  upiId          String?
+
+  openingBalance Decimal         @db.Decimal(12, 2) @default(0)
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  entries        VendorLedgerEntry[]
+  b2bOrders      B2BOrder[]
+
+  @@unique([name, phone])
+  @@index([category])
+}
+
+/// One line of a vendor's account: a bill raised, a payment made, or a credit note
+model VendorLedgerEntry {
+  id          String          @id @default(uuid())
+  vendorId    String
+  vendor      Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  type        VendorEntryType
+  entryDate   DateTime
+  amount      Decimal         @db.Decimal(12, 2)
+  description String?
+  referenceNo String?         // invoice number / UTR / cheque number
+  paymentMode PaymentMode?
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([vendorId, entryDate])
+}
+
+// ---------- B2B trade ----------
+
+/// Work sub-contracted to a partner caterer (OUTGOING) or taken on for one (INCOMING)
+model B2BOrder {
+  id            String         @id @default(uuid())
+  orderNumber   String         @unique
+  direction     B2BDirection
+  status        B2BOrderStatus @default(DRAFT)
+
+  partnerName   String
+  partnerPhone  String?
+  partnerGst    String?
+  /// Set when the partner also exists in the vendor directory, so the order posts to their ledger
+  vendorId      String?
+  vendor        Vendor?        @relation(fields: [vendorId], references: [id])
+
+  eventName     String
+  eventDate     DateTime
+  eventTime     String?
+  venue         String?
+  paxCount      Int            @default(0)
+
+  subtotal      Decimal        @db.Decimal(12, 2) @default(0)
+  otherCharges  Decimal        @db.Decimal(12, 2) @default(0)
+  taxPercent    Decimal        @db.Decimal(5, 2)  @default(0)
+  totalAmount   Decimal        @db.Decimal(12, 2) @default(0)
+
+  notes         String?        @db.Text
+  ledgerEntryId String?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  items         B2BOrderItem[]
+  payments      B2BOrderPayment[]
+
+  @@index([direction, eventDate])
+  @@index([vendorId])
+}
+
+model B2BOrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       B2BOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  description String
+  quantity    Decimal  @db.Decimal(12, 2) @default(1)
+  unit        String   @default("plates")
+  rate        Decimal  @db.Decimal(12, 2) @default(0)
+  amount      Decimal  @db.Decimal(12, 2) @default(0)
+
+  @@index([orderId])
+}
+
+model B2BOrderPayment {
+  id            String       @id @default(uuid())
+  orderId       String
+  order         B2BOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  paidOn        DateTime
+  amount        Decimal      @db.Decimal(12, 2)
+  mode          PaymentMode?
+  referenceNo   String?
+  notes         String?
+  ledgerEntryId String?
+
+  createdAt     DateTime     @default(now())
+
+  @@index([orderId])
 }
 
 /// One recommended package option (AI generates 2-3 per enquiry)

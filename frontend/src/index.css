@@ -2583,6 +2583,323 @@ a.contact-detail-card:hover {
   filter: brightness(1.1);
 }
 
+/* ---------- Vendors & ledger ---------- */
+
+.owner-modal-wide {
+  max-width: 720px;
+  max-height: 88vh;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.owner-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px 16px;
+  margin-bottom: 8px;
+}
+
+.owner-form-grid label {
+  display: block;
+}
+
+.owner-form-grid .field-label {
+  margin-bottom: 4px;
+}
+
+.owner-form-full {
+  grid-column: 1 / -1;
+}
+
+.owner-form-section {
+  margin: 18px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 15px;
+}
+
+.owner-balance {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.owner-balance small {
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.owner-balance.due {
+  color: #9b1c33;
+}
+
+.owner-balance.settled {
+  color: #1f6b3a;
+}
+
+.owner-ledger-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .owner-ledger-head {
+    grid-template-columns: 1fr;
+  }
+}
+
+.owner-vendor-card,
+.owner-payout {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fffaf3;
+}
+
+.owner-vendor-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.owner-vendor-card h3 {
+  margin: 0 0 4px;
+}
+
+.owner-vendor-card p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.owner-vendor-card > div {
+  flex: 1;
+}
+
+.owner-payout h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.owner-payout dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+}
+
+.owner-payout dt {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.owner-payout dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.owner-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.owner-metric {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fffdf9;
+  font-family: Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--maroon-dark);
+}
+
+.owner-metric small {
+  display: block;
+  margin-bottom: 4px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.owner-metric.due {
+  border-color: #e6afba;
+  background: #fdecef;
+  color: #9b1c33;
+}
+
+.owner-metric.settled {
+  border-color: #c3e4cd;
+  background: #eef8f0;
+  color: #1f6b3a;
+}
+
+.owner-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(122, 31, 61, 0.1);
+  color: var(--maroon-dark);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.owner-tag.tag-purchase {
+  background: #fdecef;
+  color: #9b1c33;
+}
+
+.owner-tag.tag-payment {
+  background: #eef8f0;
+  color: #1f6b3a;
+}
+
+.owner-tag.tag-credit_note {
+  background: rgba(201, 162, 75, 0.2);
+  color: #8a6520;
+}
+
+.owner-ref {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.owner-subtabs {
+  margin-bottom: 14px;
+}
+
+.owner-tag.tag-draft {
+  background: rgba(122, 108, 111, 0.15);
+  color: var(--muted);
+}
+
+.owner-tag.tag-confirmed {
+  background: rgba(201, 162, 75, 0.2);
+  color: #8a6520;
+}
+
+.owner-tag.tag-in_progress {
+  background: rgba(45, 105, 160, 0.15);
+  color: #1f4d78;
+}
+
+.owner-tag.tag-delivered {
+  background: #eef8f0;
+  color: #1f6b3a;
+}
+
+.owner-tag.tag-cancelled {
+  background: #fdecef;
+  color: #9b1c33;
+  text-decoration: line-through;
+}
+
+/* ---------- Owner sign-in & identity ---------- */
+
+.owner-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #fffaf3 0%, #f3e6d5 100%);
+}
+
+.owner-login-card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 34px 32px 28px;
+  border-radius: 20px;
+  background: var(--cream);
+  box-shadow: var(--shadow-strong);
+  text-align: center;
+}
+
+.owner-login-card .brand-logo,
+.owner-login-card > span:first-of-type {
+  align-self: center;
+}
+
+.owner-login-card .owner-badge {
+  margin: 14px 0 18px;
+}
+
+.owner-login-card h2 {
+  margin-bottom: 6px;
+}
+
+.owner-login-card .owner-hint {
+  margin-bottom: 20px;
+}
+
+.owner-login-card .field-label {
+  text-align: left;
+}
+
+.owner-login-card input {
+  width: 100%;
+  padding: 11px 13px;
+  margin-bottom: 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  background: #fff;
+}
+
+.owner-login-alert {
+  margin: 0 0 18px;
+}
+
+.owner-login-submit {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.owner-topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.owner-who {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--maroon-dark);
+  text-align: right;
+}
+
+.owner-who small {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
 @media (max-width: 720px) {
   .owner-progress-track {
     display: none;

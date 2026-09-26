@@ -29,4 +29,11 @@ export const env = {
 
   gstPercent: Number(process.env.GST_PERCENT ?? 5),
   defaultCurrency: process.env.DEFAULT_CURRENCY ?? "INR",
+
+  jwtSecret: required("JWT_SECRET", process.env.NODE_ENV === "production" ? undefined : "dev-only-insecure-secret"),
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "12h",
+  /// Used once on first boot to create the initial owner account
+  bootstrapOwnerEmail: process.env.BOOTSTRAP_OWNER_EMAIL ?? "",
+  bootstrapOwnerPassword: process.env.BOOTSTRAP_OWNER_PASSWORD ?? "",
+  bootstrapOwnerName: process.env.BOOTSTRAP_OWNER_NAME ?? "Owner",
 };

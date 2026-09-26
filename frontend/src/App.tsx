@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { LandingPage } from "./components/LandingPage";
 import { EventWizard } from "./components/EventWizard";
 import { MenuResults } from "./components/MenuResults";
-import { createWizardEnquiry, generateMenuPackages } from "./api/client";
+import { createWizardEnquiry, generateMenuPackages, AuthUser, fetchCurrentUser, getAuthToken, setAuthToken } from "./api/client";
 import { WizardData } from "./wizardData";
 import { GalleryPage } from "./components/GalleryPage";
 import { ServicesPage } from "./components/ServicesPage";
 import { ContactPage } from "./components/ContactPage";
 import { PlannerPage } from "./components/PlannerPage";
 import { OwnerPage } from "./components/OwnerPage";
+import { OwnerLogin } from "./components/OwnerLogin";
 
 type View = "landing" | "gallery" | "services" | "contact" | "wizard" | "results" | "owner";
 
@@ -22,6 +23,27 @@ export function App() {
   const [guestCount, setGuestCount] = useState(0);
   const [packages, setPackages] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    if (!getAuthToken()) {
+      setCheckingSession(false);
+      return;
+    }
+    fetchCurrentUser()
+      .then(setCurrentUser)
+      .catch(() => setAuthToken(null))
+      .finally(() => setCheckingSession(false));
+  }, []);
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      setCurrentUser(null);
+    }
+    window.addEventListener("cateringai:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("cateringai:unauthorized", handleUnauthorized);
+  }, []);
 
   useEffect(() => {
     function syncFromHash() {
@@ -69,7 +91,20 @@ export function App() {
   }
 
   if (view === "owner") {
-    return <OwnerPage onExit={() => navigate("landing")} />;
+    if (checkingSession) return <div className="owner-login" />;
+    if (!currentUser) {
+      return <OwnerLogin onSignedIn={setCurrentUser} onExit={() => navigate("landing")} />;
+    }
+    return (
+      <OwnerPage
+        currentUser={currentUser}
+        onSignOut={() => {
+          setAuthToken(null);
+          setCurrentUser(null);
+        }}
+        onExit={() => navigate("landing")}
+      />
+    );
   }
 
   if (view === "results" && enquiryId) {
